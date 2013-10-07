@@ -4,6 +4,10 @@ vpy
 *.pyc
 *.swp
 *.log
+*.egg
+*.tar.gz
+build
+*.egg-info
 secret_key.txt
 tmp
 **/.DS_Store
