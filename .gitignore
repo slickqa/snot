@@ -1,0 +1,9 @@
+*.iml
+.idea
+vpy
+*.pyc
+*.swp
+*.log
+secret_key.txt
+tmp
+**/.DS_Store
