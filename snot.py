@@ -1,6 +1,6 @@
 __author__ = 'jcorbett'
 
-import nose, nose.plugins
+import nose, nose.plugins, nose.case
 
 import re
 import os
@@ -33,7 +33,7 @@ class DocStringMetaData(object):
         if hasattr(func, '__name__') and func.__name__ is not None and func.__name__ != "":
             s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', func.__name__)
             s2 = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-            return re.sub(r'_', ' ', re.sub(r'^test_?', '', s2)).capitalize()
+            return re.sub(r'_', ' ', re.sub(r'_?[tT]est$', '', re.sub(r'^[Tt]est_?', '', s2))).capitalize()
 
     def process_node(self, node):
         if node.nodeName == 'block_quote':
@@ -62,6 +62,16 @@ class DocStringMetaData(object):
                 setattr(self, node.firstChild.firstChild.nodeValue, node.childNodes[1].firstChild.firstChild.nodeValue)
 
 
+def get_tests(testsuite):
+    tests = []
+    for test in testsuite:
+        if hasattr(test, '__iter__'):
+            tests.extend(get_tests(test))
+        else:
+            tests.append(test)
+    return tests
+
+
 class SlickAsSnotPlugin(nose.plugins.Plugin):
     name = "snot"
 
@@ -72,6 +82,21 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         super(SlickAsSnotPlugin, self).configure(options, conf)
         if not self.enabled:
             return
+
+    def prepareTest(self, testsuite):
+        import pprint
+        pp = pprint.PrettyPrinter(indent=4)
+        for test in get_tests(testsuite):
+            assert isinstance(test, nose.case.Test)
+            testmethod = test.test._testMethodName
+            if testmethod == 'runTest':
+                testmethod = 'test'
+            testdata = DocStringMetaData(getattr(test.test, testmethod))
+            if not hasattr(testdata, 'automationId'):
+                testdata.automationId = test.id()
+            if not hasattr(testdata, 'automationTool'):
+                testdata.automationTool = 'python-nose'
+            log.debug("Found test with automationId '%s' and name '%s'", testdata.automationId, testdata.name)
 
     def finalize(self, result):
         log.info('Snot plugin finalized!')

@@ -7,6 +7,7 @@ from nose.tools import istest
 from nose.plugins import Plugin
 
 import sys
+import unittest
 
 @istest
 def test_plugin_inherits_nose_plugin():
@@ -163,4 +164,27 @@ def test_name_conversion_with_docstring():
     assert_equal("Purpose Test", testdata.purpose)
     assert_equal("Test Component", testdata.component)
 
+@istest
+def test_name_conversion_with_test_at_end():
+    """
+    If the 'test' part of the name occurs at the end of the function name, the conversion to a nice name
+    should catch it and take it out.
 
+    :component: DocStringMetaData
+    :author: Jason Corbett
+    :steps:
+        1. Instantiate an instance of DocStringMetaData on a function with a doc string and without a test name
+           but with 'test' at the end of the name
+    :expectedResults:
+        1. The name of the function should be converted to the test name without test at the end of the name
+    """
+
+    def this_is_a_simple_test():
+        pass
+    testdata = snot.DocStringMetaData(this_is_a_simple_test)
+    assert_equal("This is a simple", testdata.name)
+
+class ExampleTests(unittest.TestCase):
+
+    def test_unittest_testcase_method(self):
+        pass
