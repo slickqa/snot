@@ -22,6 +22,10 @@ class DocStringMetaData(object):
                     if len(document.childNodes) > 1:
                         for node in document.childNodes[1:]:
                             self.process_node(node)
+                else:
+                    self.name = self.get_name_from_function_name(func)
+                    for node in document.childNodes:
+                        self.process_node(node)
         else:
             self.name = self.get_name_from_function_name(func)
 

@@ -99,6 +99,19 @@ def test_empty_docstring():
 
 @istest
 def test_name_conversion():
+    """Function with empty doc string should have a name converted from the function name
+
+    When getting data about a function (test) without any doc string the name should be converted
+    from the function's name.  In particular underscore characters should be converted to spaces,
+    "test" at the beginning of the name should be removed, and The first character capitalized.
+
+    :component: DocStringMetaData
+    :author: Jason Corbett
+    :steps:
+        1. Instantiate an instance of DocStringMetaData on a function without a doc string
+    :expectedResults:
+        1. The name of the function should be converted to the test name
+    """
     def test_function_name():
         pass
     testdata = snot.DocStringMetaData(test_function_name)
@@ -106,8 +119,48 @@ def test_name_conversion():
 
 @istest
 def test_camel_case_name_conversion():
+    """Function with empty doc string should have a name converted from the function name (camel case)
+
+    When getting data about a function (test) without any doc string the name should be converted
+    from the function's name.  In particular camel case names should be separated at the upper
+    case letters, spaces added, and only the first letter left capitalized.
+
+    :component: DocStringMetaData
+    :author: Jason Corbett
+    :steps:
+        1. Instantiate an instance of DocStringMetaData on a function without a doc string
+    :expectedResults:
+        1. The name of the function should be converted to the test name
+    """
     def testCamelCase():
         pass
     testdata = snot.DocStringMetaData(testCamelCase)
     assert_equal("Camel case", testdata.name, "When a function has no docstring the function name (in camel case) should be converted into a human friendly name.")
+
+@istest
+def test_name_conversion_with_docstring():
+    """Function with a doc string, and without a first line has the name converted from function name
+
+    When getting data about a function (test) with a doc string but without a name at the top,
+    the name should be converted from the function's name.
+
+    :component: DocStringMetaData
+    :author: Jason Corbett
+    :steps:
+        1. Instantiate an instance of DocStringMetaData on a function with a doc string and without a test name
+    :expectedResults:
+        1. The name of the function should be converted to the test name
+    """
+    def testCamelCaseWithDocString():
+        """
+        Purpose Test
+
+        :component: Test Component
+        """
+        pass
+    testdata = snot.DocStringMetaData(testCamelCaseWithDocString)
+    assert_equal("Camel case with doc string", testdata.name)
+    assert_equal("Purpose Test", testdata.purpose)
+    assert_equal("Test Component", testdata.component)
+
 
