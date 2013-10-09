@@ -2,6 +2,7 @@ __author__ = 'jcorbett'
 
 import nose, nose.plugins
 
+import re
 import os
 import logging
 import docutils.core
@@ -9,18 +10,26 @@ import docutils.core
 log = logging.getLogger('nose.plugins.snot')
 
 
-class DocStringMetadata(object):
+class DocStringMetaData(object):
 
     def __init__(self, func):
-        if hasattr(func, '__doc__'):
-            self.dom = docutils.core.publish_doctree(func.__doc__).asdom()
-            if self.dom is not None and self.dom.firstChild is not None and self.dom.firstChild.nodeName == 'document':
-                document = self.dom.firstChild
+        if hasattr(func, '__doc__') and func.__doc__ is not None:
+            dom = docutils.core.publish_doctree(func.__doc__).asdom()
+            if dom is not None and dom.firstChild is not None and dom.firstChild.nodeName == 'document':
+                document = dom.firstChild
                 if document.hasChildNodes() and document.firstChild.nodeName == 'paragraph':
                     self.name = document.firstChild.firstChild.nodeValue
                     if len(document.childNodes) > 1:
                         for node in document.childNodes[1:]:
                             self.process_node(node)
+        else:
+            self.name = self.get_name_from_function_name(func)
+
+    def get_name_from_function_name(self, func):
+        if hasattr(func, '__name__') and func.__name__ is not None and func.__name__ != "":
+            s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', func.__name__)
+            s2 = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+            return re.sub(r'_', ' ', re.sub(r'^test_?', '', s2)).capitalize()
 
     def process_node(self, node):
         if node.nodeName == 'block_quote':
@@ -39,7 +48,7 @@ class DocStringMetadata(object):
                 self.expectedResults = []
                 for list_item in node.childNodes[1].firstChild.childNodes:
                     self.expectedResults.append(list_item.firstChild.firstChild.nodeValue)
-            if node.firstChild.firstChild.nodeValue == 'steps' and node.childNodes[1].firstChild.nodeName == 'enumerated_list':
+            elif node.firstChild.firstChild.nodeValue == 'steps' and node.childNodes[1].firstChild.nodeName == 'enumerated_list':
                 self.steps = []
                 for list_item in node.childNodes[1].firstChild.childNodes:
                     self.steps.append(list_item.firstChild.firstChild.nodeValue)
