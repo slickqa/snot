@@ -1,14 +1,18 @@
 __author__ = 'jcorbett'
 
 import nose, nose.plugins, nose.case
+from slickqa import SlickQA, Testcase, ResultStatus, RunStatus, Step, Result
 
 import re
 import os
 import logging
 import docutils.core
+import datetime
+import traceback
 
 log = logging.getLogger('nose.plugins.snot')
 
+current_test = None
 
 class DocStringMetaData(object):
 
@@ -77,15 +81,46 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
 
     def options(self, parser, env=os.environ):
         super(SlickAsSnotPlugin, self).options(parser, env=env)
+        parser.add_option("--slick-url", action="store", default=env.get('SLICK_URL'),
+                          metavar="SLICK_URL", dest="slick_url",
+                          help="the base url of the slick web app [SLICK_URL]")
+        parser.add_option("--slick-project-name", action="store", default=env.get('SLICK_PROJECT_NAME'),
+                          metavar="SLICK_PROJECT_NAME", dest="slick_project_name",
+                          help="the name of the project in slick to use [SLICK_PROJECT_NAME]")
+        parser.add_option("--slick-release", action="store", default=env.get('SLICK_RELEASE'),
+                          metavar="SLICK_RELEASE", dest="slick_release",
+                          help="the release under which to file the results in slick [SLICK_RELEASE]")
+        parser.add_option("--slick-build", action="store", default=env.get('SLICK_BUILD'),
+                          metavar="SLICK_BUILD", dest="slick_build",
+                          help="the build under which to file the results in slick [SLICK_BUILD]")
+        parser.add_option("--slick-testplan", action="store", default=env.get('SLICK_TESTPLAN'),
+                          metavar="SLICK_TESTPLAN", dest="slick_testplan",
+                          help="the testplan to link the testrun to in slick [SLICK_TESTPLAN]")
+        parser.add_option("--slick-testrun-name", action="store", default=env.get('SLICK_TESTRUN_NAME'),
+                          metavar="SLICK_TESTRUN_NAME", dest="slick_testrun_name",
+                          help="the name of the testrun to create in slick [SLICK_TESTRUN_NAME]")
 
     def configure(self, options, conf):
         super(SlickAsSnotPlugin, self).configure(options, conf)
         if not self.enabled:
             return
+        for required in ['slick_url', 'slick_project_name']:
+            if (not hasattr(options, required)) or getattr(options, required) is None or getattr(options, required) == "":
+                log.error("You can't use snot without specifying at least the slick url and the project name.")
+                self.enabled = False
+                return
+        self.url = options.slick_url
+        self.project_name = options.slick_project_name
+        self.release = options.slick_release
+        self.build = options.slick_build
+        self.testplan = options.slick_testplan
+        self.testrun_name = options.slick_testrun_name
+        self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testplan)
 
     def prepareTest(self, testsuite):
-        import pprint
-        pp = pprint.PrettyPrinter(indent=4)
+        if not self.enabled:
+            return
+        self.results = dict()
         for test in get_tests(testsuite):
             assert isinstance(test, nose.case.Test)
             testmethod = test.test._testMethodName
@@ -96,10 +131,103 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 testdata.automationId = test.id()
             if not hasattr(testdata, 'automationTool'):
                 testdata.automationTool = 'python-nose'
-            log.debug("Found test with automationId '%s' and name '%s'", testdata.automationId, testdata.name)
+            slicktest = Testcase()
+            slicktest.name = testdata.name
+            slicktest.automationId = testdata.automationId
+            slicktest.automationTool = testdata.automationTool
+            for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
+                if hasattr(testdata, attribute):
+                    log.debug("%s=%s", attribute, getattr(testdata, attribute))
+                    setattr(slicktest, attribute, getattr(testdata, attribute))
+            slicktest.project = self.slick.project.create_reference()
+            if hasattr(testdata, 'component'):
+                component = self.slick.get_component(testdata.component)
+                if component is None:
+                    component = self.slick.create_component(testdata.component)
+                slicktest.component = component.create_reference()
+            if hasattr(testdata, 'steps'):
+                slicktest.steps = []
+                for step in testdata.steps:
+                    slickstep = Step()
+                    slickstep.name = step
+                    if hasattr(testdata, 'expectedResults') and len(testdata.expectedResults) > len(slicktest.steps):
+                        slickstep.expectedResult = testdata.expectedResults[len(slicktest.steps)]
+                    slicktest.steps.append(slickstep)
+            self.results[test.address()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=RunStatus.TO_BE_RUN)
+
+    def startTest(self, test):
+        if not self.enabled:
+            return
+        if test.address() in self.results:
+            result = self.results[test.address()]
+            assert isinstance(result, Result)
+            result.runstatus = RunStatus.RUNNING
+            result.started = datetime.datetime.now()
+            result.reason = ""
+            if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
+                del result.config
+            if hasattr(result, 'component') and not hasattr(result.component, 'id'):
+                del result.component
+            result.update()
+            current_test = result
+
+    def addSuccess(self, test):
+        if not self.enabled:
+            return
+        if test.address() in self.results:
+            result = self.results[test.address()]
+            assert isinstance(result, Result)
+            result.runstatus = RunStatus.FINISHED
+            result.status = ResultStatus.PASS
+            result.finished = datetime.datetime.now()
+            result.runlength = int((result.finished - result.started).total_seconds() * 1000)
+            if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
+                del result.config
+            if hasattr(result, 'component') and not hasattr(result.component, 'id'):
+                del result.component
+            result.update()
+
+    def addError(self, test, err):
+        if not self.enabled:
+            return
+        if test.address() in self.results:
+            result = self.results[test.address()]
+            assert isinstance(result, Result)
+            result.runstatus = RunStatus.FINISHED
+            result.status = ResultStatus.BROKEN_TEST
+            result.finished = datetime.datetime.now()
+            result.runlength = int((result.finished - result.started).total_seconds() * 1000)
+            result.reason = '\n'.join(traceback.format_exception(*err))
+            if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
+                del result.config
+            if hasattr(result, 'component') and not hasattr(result.component, 'id'):
+                del result.component
+            result.update()
+
+    def addFailure(self, test, err):
+        if not self.enabled:
+            return
+        if test.address() in self.results:
+            result = self.results[test.address()]
+            assert isinstance(result, Result)
+            result.runstatus = RunStatus.FINISHED
+            result.status = ResultStatus.FAIL
+            result.finished = datetime.datetime.now()
+            result.runlength = int((result.finished - result.started).total_seconds() * 1000)
+            result.reason = '\n'.join(traceback.format_exception(*err))
+            if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
+                del result.config
+            if hasattr(result, 'component') and not hasattr(result.component, 'id'):
+                del result.component
+            result.update()
+
+
+
+
 
     def finalize(self, result):
-        log.info('Snot plugin finalized!')
-
+        if not self.enabled:
+            return
+        self.slick.finish_testrun()
 
 
