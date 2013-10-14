@@ -183,9 +183,3 @@ def test_name_conversion_with_test_at_end():
         pass
     testdata = snot.DocStringMetaData(this_is_a_simple_test)
     assert_equal("This is a simple", testdata.name)
-
-class ExampleTests(unittest.TestCase):
-
-    def test_unittest_testcase_method(self):
-        print "This test will fail."
-        assert_true(False)
