@@ -9,10 +9,22 @@ import logging
 import docutils.core
 import datetime
 import traceback
+from StringIO import StringIO
+
 
 log = logging.getLogger('nose.plugins.snot')
 
-current_test = None
+current_result = None
+
+def add_file(path):
+    """
+    Upload a file to slick, adding it to the current test result.  If no test is running, this will do nothing!
+
+    :param path: The path to the specified file
+    :return: Nothing
+    """
+    if current_result is not None:
+        current_result.add_file(path)
 
 class DocStringMetaData(object):
 
@@ -100,6 +112,13 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                           metavar="SLICK_TESTRUN_NAME", dest="slick_testrun_name",
                           help="the name of the testrun to create in slick [SLICK_TESTRUN_NAME]")
 
+        # Make sure the log capture doesn't show slick related logging statements
+        if 'NOSE_LOGFILTER' in env:
+            env['NOSE_LOGFILTER'] = env.get('NOSE_LOGFILTER') + ",-slick,-requests,-slick-reporter"
+        else:
+            env['NOSE_LOGFILTER'] = "-slick,-requests,-slick-reporter"
+
+
     def configure(self, options, conf):
         super(SlickAsSnotPlugin, self).configure(options, conf)
         if not self.enabled:
@@ -124,7 +143,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         for test in get_tests(testsuite):
             assert isinstance(test, nose.case.Test)
             testmethod = test.test._testMethodName
-            if testmethod == 'runTest':
+            if testmethod == 'runTest' and hasattr(test.test, "test"):
                 testmethod = 'test'
             testdata = DocStringMetaData(getattr(test.test, testmethod))
             if not hasattr(testdata, 'automationId'):
@@ -137,7 +156,6 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             slicktest.automationTool = testdata.automationTool
             for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
                 if hasattr(testdata, attribute):
-                    log.debug("%s=%s", attribute, getattr(testdata, attribute))
                     setattr(slicktest, attribute, getattr(testdata, attribute))
             slicktest.project = self.slick.project.create_reference()
             if hasattr(testdata, 'component'):
@@ -169,61 +187,59 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             if hasattr(result, 'component') and not hasattr(result.component, 'id'):
                 del result.component
             result.update()
-            current_test = result
+            global current_result
+            current_result = result
+
+    def addSlickResult(self, test, resultstatus=ResultStatus.PASS, err=None):
+        if not self.enabled:
+            return
+        if test.address() in self.results:
+            result = self.results[test.address()]
+            assert isinstance(result, Result)
+            result.runstatus = RunStatus.FINISHED
+            result.status = resultstatus
+            result.finished = datetime.datetime.now()
+            result.runlength = int((result.finished - result.started).total_seconds() * 1000)
+            if err is not None:
+                # log capture and stderr/stdout capture are appended to the message.  We don't want those showing up
+                # in the reason
+                reason_lines = traceback.format_exception(*err)
+                message_parts = reason_lines[-1].split('\n')
+                reason_lines[-1] = message_parts[0]
+                capture = None
+                if len(message_parts) > 2:
+                    capture = '\n'.join(message_parts[1:])
+                result.reason = '\n'.join(reason_lines)
+
+                if capture is not None:
+                    capture_fileobj = StringIO(capture)
+                    if not result.files:
+                        result.files = []
+                    stored_file = self.slick.slickcon.files.upload_local_file("Nose Capture.txt", capture_fileobj)
+                    result.files.append(stored_file)
+                    capture_fileobj.close()
+
+            if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
+                del result.config
+            if hasattr(result, 'component') and not hasattr(result.component, 'id'):
+                del result.component
+            result.update()
+
 
     def addSuccess(self, test):
         if not self.enabled:
             return
-        if test.address() in self.results:
-            result = self.results[test.address()]
-            assert isinstance(result, Result)
-            result.runstatus = RunStatus.FINISHED
-            result.status = ResultStatus.PASS
-            result.finished = datetime.datetime.now()
-            result.runlength = int((result.finished - result.started).total_seconds() * 1000)
-            if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
-                del result.config
-            if hasattr(result, 'component') and not hasattr(result.component, 'id'):
-                del result.component
-            result.update()
+        self.addSlickResult(test)
 
     def addError(self, test, err):
         if not self.enabled:
             return
-        if test.address() in self.results:
-            result = self.results[test.address()]
-            assert isinstance(result, Result)
-            result.runstatus = RunStatus.FINISHED
-            result.status = ResultStatus.BROKEN_TEST
-            result.finished = datetime.datetime.now()
-            result.runlength = int((result.finished - result.started).total_seconds() * 1000)
-            result.reason = '\n'.join(traceback.format_exception(*err))
-            if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
-                del result.config
-            if hasattr(result, 'component') and not hasattr(result.component, 'id'):
-                del result.component
-            result.update()
+        self.addSlickResult(test, ResultStatus.BROKEN_TEST, err)
 
     def addFailure(self, test, err):
         if not self.enabled:
             return
-        if test.address() in self.results:
-            result = self.results[test.address()]
-            assert isinstance(result, Result)
-            result.runstatus = RunStatus.FINISHED
-            result.status = ResultStatus.FAIL
-            result.finished = datetime.datetime.now()
-            result.runlength = int((result.finished - result.started).total_seconds() * 1000)
-            result.reason = '\n'.join(traceback.format_exception(*err))
-            if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
-                del result.config
-            if hasattr(result, 'component') and not hasattr(result.component, 'id'):
-                del result.component
-            result.update()
-
-
-
-
+        self.addSlickResult(test, ResultStatus.FAIL, err)
 
     def finalize(self, result):
         if not self.enabled:

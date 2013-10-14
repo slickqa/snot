@@ -187,4 +187,5 @@ def test_name_conversion_with_test_at_end():
 class ExampleTests(unittest.TestCase):
 
     def test_unittest_testcase_method(self):
-        pass
+        print "This test will fail."
+        assert_true(False)
