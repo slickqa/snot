@@ -10,6 +10,7 @@ import docutils.core
 import datetime
 import traceback
 from StringIO import StringIO
+from unittest import SkipTest
 
 
 log = logging.getLogger('nose.plugins.snot')
@@ -213,7 +214,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
 
                 if capture is not None:
                     capture_fileobj = StringIO(capture)
-                    if not result.files:
+                    if not hasattr(result, 'files'):
                         result.files = []
                     stored_file = self.slick.slickcon.files.upload_local_file("Nose Capture.txt", capture_fileobj)
                     result.files.append(stored_file)
@@ -229,12 +230,16 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
     def addSuccess(self, test):
         if not self.enabled:
             return
+        log.debug("Inside addSuccess")
         self.addSlickResult(test)
 
     def addError(self, test, err):
         if not self.enabled:
             return
-        self.addSlickResult(test, ResultStatus.BROKEN_TEST, err)
+        if err[0] is SkipTest:
+            self.addSlickResult(test, ResultStatus.SKIPPED, err)
+        else:
+            self.addSlickResult(test, ResultStatus.BROKEN_TEST, err)
 
     def addFailure(self, test, err):
         if not self.enabled:

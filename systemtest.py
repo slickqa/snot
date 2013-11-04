@@ -7,6 +7,7 @@ get reported.
 __author__ = 'jcorbett'
 
 import nose
+import unittest
 from nose.tools import istest
 import snot
 import sys
@@ -57,3 +58,42 @@ def test_stdout_logging_captured():
     log = logging.getLogger("systemtests.test_stdout_stderr_logging_captured")
     log.info("A Logging Message")
     assert_true(False, "This test will always fail, so that we can see capturing")
+
+class ClassicUnittest(unittest.TestCase):
+
+    def setUp(self):
+        self.log = logging.getLogger("systemtest.ClassicUnittest")
+        self.log.debug("Inside setUp")
+
+    def test_unittest_example(self):
+        """Basic Unittest Testcase
+
+        This test is here to make sure that tests written using python's standard unittest framework
+        can be executed by nose and reported by slick.
+
+        :component: DocStringMetaData
+        :author: Jason Corbett
+        :steps:
+            1. Run this test
+        :expectedResults:
+            1. You see a debug message inside setup, an info message inside the test (showing the python version), and another debug message from tearDown
+        """
+        self.log.info("Inside unittest for Python %s", sys.version)
+        self.assert_(True)
+
+    def test_simple_skip_example(self):
+        """Simple Skip Example Test
+
+        This test checks what happens when a test raises a skip Exception from unittest.
+
+        :component: NosePlugin
+        :author: Jason Corbett
+        """
+        self.log.debug("This test should skip")
+        self.assert_(True)
+        raise unittest.SkipTest()
+
+    def tearDown(self):
+        self.log.debug("Inside tearDown")
+
+
