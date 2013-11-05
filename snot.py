@@ -154,6 +154,12 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--slick-testrun-name", action="store", default=env.get('SLICK_TESTRUN_NAME'),
                           metavar="SLICK_TESTRUN_NAME", dest="slick_testrun_name",
                           help="the name of the testrun to create in slick [SLICK_TESTRUN_NAME]")
+        parser.add_option("--slick-environment-name", action="store", default=env.get('SLICK_ENVIRONMENT_NAME'),
+                          metavar="SLICK_ENVIRONMENT_NAME", dest="slick_environment_name",
+                          help="the name of the environment in slick to use in the testrun [SLICK_ENVIRONMENT_NAME]")
+        parser.add_option("--slick-testrun-group", action="store", default=env.get('SLICK_TESTRUN_GROUP'),
+                          metavar="SLICK_TESTRUN_GROUP", dest="slick_testrun_group",
+                          help="the name of the testrun group in slick to add this testrun to (optional) [SLICK_ENVIRONMENT_NAME]")
 
         # Make sure the log capture doesn't show slick related logging statements
         if 'NOSE_LOGFILTER' in env:
@@ -177,7 +183,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.build = options.slick_build
         self.testplan = options.slick_testplan
         self.testrun_name = options.slick_testrun_name
-        self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testplan)
+        self.environment_name = options.slick_environment_name
+        self.testrun_group = options.slick_testrun_group
+        self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
         print "Adding logging handler"
         root_logger = logging.getLogger()
         self.loghandler = LogCapturingHandler()
