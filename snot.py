@@ -88,6 +88,48 @@ def get_tests(testsuite):
             tests.append(test)
     return tests
 
+class LogCapturingHandler(logging.Handler):
+
+    ignore = ['nose', 'slick', 'requests']
+
+    def __init__(self):
+        super(LogCapturingHandler, self).__init__()
+
+    def pylevel_to_slicklevel(self, loglevel):
+        if loglevel == logging.DEBUG:
+            return "DEBUG"
+        elif loglevel == logging.INFO:
+            return "INFO"
+        elif loglevel == logging.WARN:
+            return "WARN"
+        elif loglevel > logging.WARN:
+            return "ERROR"
+        else:
+            return "DEBUG"
+
+    def emit(self, record):
+        for ignore_name in LogCapturingHandler.ignore:
+            if record.name.startswith(ignore_name):
+                return
+        msg = self.format(record)
+        if current_result is not None:
+            if record.exc_info is None:
+                current_result.add_log_entry(msg,
+                                             level=self.pylevel_to_slicklevel(record.levelno),
+                                             loggername=record.name)
+            else:
+                excmessage = ''
+                if hasattr(record.exc_info[1], 'message'):
+                    excmessage = record.exc_info[1].message
+                current_result.add_log_entry(msg,
+                                             level=self.pylevel_to_slicklevel(record.levelno),
+                                             loggername=record.name,
+                                             exceptionclassname=record.exc_info[0].__name__,
+                                             exceptionmessage=excmessage,
+                                             stacktrace=traceback.format_tb(record.exc_info[2]))
+
+
+
 
 class SlickAsSnotPlugin(nose.plugins.Plugin):
     name = "snot"
@@ -136,6 +178,11 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.testplan = options.slick_testplan
         self.testrun_name = options.slick_testrun_name
         self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testplan)
+        print "Adding logging handler"
+        root_logger = logging.getLogger()
+        self.loghandler = LogCapturingHandler()
+        root_logger.addHandler(self.loghandler)
+        root_logger.setLevel(logging.DEBUG)
 
     def prepareTest(self, testsuite):
         if not self.enabled:
@@ -230,7 +277,6 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
     def addSuccess(self, test):
         if not self.enabled:
             return
-        log.debug("Inside addSuccess")
         self.addSlickResult(test)
 
     def addError(self, test, err):

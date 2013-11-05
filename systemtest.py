@@ -78,8 +78,8 @@ class ClassicUnittest(unittest.TestCase):
         :expectedResults:
             1. You see a debug message inside setup, an info message inside the test (showing the python version), and another debug message from tearDown
         """
+
         self.log.info("Inside unittest for Python %s", sys.version)
-        self.assert_(True)
 
     def test_simple_skip_example(self):
         """Simple Skip Example Test
@@ -90,8 +90,24 @@ class ClassicUnittest(unittest.TestCase):
         :author: Jason Corbett
         """
         self.log.debug("This test should skip")
-        self.assert_(True)
-        raise unittest.SkipTest()
+        raise unittest.SkipTest("We always want to skip this test")
+
+    def test_logging_exception(self):
+        """Logging an exception Test
+
+        This test makes sure the logging capability in slick can log an exception properly.
+
+        :component: NosePlugin
+        :author: Jason Corbett
+        :steps:
+            1. Raise and exception in a try block, logging it in the except blog
+        :expectedResults:
+            1. The result should contain a logging entry that shows the log message with the exception information.
+        """
+        try:
+            raise Exception("A generic exception")
+        except:
+            self.log.warn("An exception was raised!", exc_info=sys.exc_info())
 
     def tearDown(self):
         self.log.debug("Inside tearDown")
