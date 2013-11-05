@@ -186,7 +186,6 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.environment_name = options.slick_environment_name
         self.testrun_group = options.slick_testrun_group
         self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
-        print "Adding logging handler"
         root_logger = logging.getLogger()
         self.loghandler = LogCapturingHandler()
         root_logger.addHandler(self.loghandler)
