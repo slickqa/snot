@@ -17,7 +17,7 @@ setup(
     #packages=find_packages(exclude=['distribute_setup']),
     #package_data={'': ['*.txt', '*.rst', '*.html']},
     #include_package_data=True,
-    install_requires=['slickqa>=2.0.34', 'nose', 'docutils'],
+    install_requires=['slickqa>=2.0.55', 'nose', 'docutils'],
     author="Slick Developers",
     url="http://github.com/slickqa/snot",
     entry_points={

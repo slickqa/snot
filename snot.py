@@ -5,11 +5,12 @@ from slickqa import SlickQA, Testcase, ResultStatus, RunStatus, Step, Result
 
 import re
 import os
+import sys
 import logging
 import docutils.core
 import datetime
 import traceback
-from StringIO import StringIO
+from io import StringIO
 from unittest import SkipTest
 
 
@@ -258,7 +259,11 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             if err is not None:
                 # log capture and stderr/stdout capture are appended to the message.  We don't want those showing up
                 # in the reason
-                reason_lines = traceback.format_exception(*err)
+                reason_lines = None
+                if sys.version_info[0] == 2:
+                    reason_lines = traceback.format_exception(*err)
+                else:
+                    reason_lines = traceback.format_exception(*err, chain=not isinstance(err[1],str))
                 message_parts = reason_lines[-1].split('\n')
                 reason_lines[-1] = message_parts[0]
                 capture = None
@@ -267,7 +272,12 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 result.reason = '\n'.join(reason_lines)
 
                 if capture is not None:
-                    capture_fileobj = StringIO(capture)
+                    capture_fileobj = None
+                    if sys.version_info[0] == 2:
+                        capture_fileobj = StringIO(capture.decode('UTF8'))
+                    else:
+                        capture_fileobj = StringIO(capture)
+
                     if not hasattr(result, 'files'):
                         result.files = []
                     stored_file = self.slick.slickcon.files.upload_local_file("Nose Capture.txt", capture_fileobj)
