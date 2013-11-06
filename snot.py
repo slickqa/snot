@@ -10,6 +10,7 @@ import logging
 import docutils.core
 import datetime
 import traceback
+import itertools
 from io import StringIO
 from unittest import SkipTest
 
@@ -84,7 +85,12 @@ def get_tests(testsuite):
     tests = []
     for test in testsuite:
         if hasattr(test, '__iter__'):
-            tests.extend(get_tests(test))
+            if hasattr(test, 'test_generator') and test.test_generator is not None:
+                test.test_generator, gen = itertools.tee(test.test_generator)
+                tests.extend(get_tests(test))
+                test.test_generator = gen
+            else:
+                tests.extend(get_tests(test))
         else:
             tests.append(test)
     return tests
@@ -227,13 +233,13 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     if hasattr(testdata, 'expectedResults') and len(testdata.expectedResults) > len(slicktest.steps):
                         slickstep.expectedResult = testdata.expectedResults[len(slicktest.steps)]
                     slicktest.steps.append(slickstep)
-            self.results[test.address()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=RunStatus.TO_BE_RUN)
+            self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=RunStatus.TO_BE_RUN)
 
     def startTest(self, test):
         if not self.enabled:
             return
-        if test.address() in self.results:
-            result = self.results[test.address()]
+        if test.id() in self.results:
+            result = self.results[test.id()]
             assert isinstance(result, Result)
             result.runstatus = RunStatus.RUNNING
             result.started = datetime.datetime.now()
@@ -249,8 +255,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
     def addSlickResult(self, test, resultstatus=ResultStatus.PASS, err=None):
         if not self.enabled:
             return
-        if test.address() in self.results:
-            result = self.results[test.address()]
+        if test.id() in self.results:
+            result = self.results[test.id()]
             assert isinstance(result, Result)
             result.runstatus = RunStatus.FINISHED
             result.status = resultstatus
@@ -289,6 +295,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             if hasattr(result, 'component') and not hasattr(result.component, 'id'):
                 del result.component
             result.update()
+
+        else:
+            log.error("Unrecognized test %s", test.id())
 
 
     def addSuccess(self, test):

@@ -113,3 +113,27 @@ class ClassicUnittest(unittest.TestCase):
         self.log.debug("Inside tearDown")
 
 
+
+
+
+@istest
+def generator_test():
+    inputs = ["first", "second", "third"]
+    expected = ["first", "not second", "third"]
+    for i in range(len(inputs)):
+        yield check_expected_equals_input, inputs[i], expected[i]
+
+def check_expected_equals_input(data, expected):
+    """Generator Test
+
+    This test takes an input data and compares it to expected.
+
+    :component: NosePlugin
+    :author: Jason Corbett
+
+    :steps:
+        1. Compare the data against the expected
+    :expectedResults:
+        1. The two should be equal
+    """
+    assert_equal(data, expected)
