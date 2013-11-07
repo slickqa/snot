@@ -7,7 +7,9 @@ from nose.tools import istest
 from nose.plugins import Plugin
 
 import sys
-import unittest
+import ConfigParser
+
+import logging
 
 @istest
 def test_plugin_inherits_nose_plugin():
@@ -183,3 +185,25 @@ def test_name_conversion_with_test_at_end():
         pass
     testdata = snot.DocStringMetaData(this_is_a_simple_test)
     assert_equal("This is a simple", testdata.name)
+
+
+@istest
+def config_test():
+    """Test configuration loading and parsing
+
+    This test makes sure that if snot.config is not None (meaning there were configuration
+    files passed to nose using the command line), then these are valid config parser objects.
+
+    :component: Snot Config
+    :author: Jason Corbett
+
+    :steps:
+        1. inspect snot.config
+    :expectedResults:
+        1. snot.config should not be None, and should be a ConfigParser object
+    """
+    if snot.config is not None:
+        assert_is_instance(snot.config, ConfigParser.ConfigParser)
+    else:
+        log = logging.getLogger('snottests.config_test')
+        log.warning("No config from which to test")

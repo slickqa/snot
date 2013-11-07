@@ -1,6 +1,6 @@
 __author__ = 'jcorbett'
 
-import nose, nose.plugins, nose.case
+import nose, nose.plugins, nose.case, nose.config
 from slickqa import SlickQA, Testcase, ResultStatus, RunStatus, Step, Result
 
 import re
@@ -13,13 +13,15 @@ import traceback
 import itertools
 from io import StringIO
 from unittest import SkipTest
+from ConfigParser import SafeConfigParser
 
 
 log = logging.getLogger('nose.plugins.snot')
 
 current_result = None
+config = None
 
-def add_file(path):
+def add_file(path, fileobj=None):
     """
     Upload a file to slick, adding it to the current test result.  If no test is running, this will do nothing!
 
@@ -27,7 +29,7 @@ def add_file(path):
     :return: Nothing
     """
     if current_result is not None:
-        current_result.add_file(path)
+        current_result.add_file(path, fileobj)
 
 class DocStringMetaData(object):
 
@@ -80,6 +82,11 @@ class DocStringMetaData(object):
             else:
                 setattr(self, node.firstChild.firstChild.nodeValue, node.childNodes[1].firstChild.firstChild.nodeValue)
 
+
+def parse_config(files):
+    parser = SafeConfigParser()
+    parser.read(files)
+    return parser
 
 def get_tests(testsuite):
     tests = []
@@ -177,6 +184,10 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
 
     def configure(self, options, conf):
         super(SlickAsSnotPlugin, self).configure(options, conf)
+        global config
+        assert isinstance(conf, nose.config.Config)
+        if options.files is not None and len(options.files) > 0:
+            config = parse_config(options.files)
         if not self.enabled:
             return
         for required in ['slick_url', 'slick_project_name']:

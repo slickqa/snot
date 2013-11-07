@@ -12,6 +12,7 @@ from nose.tools import istest
 import snot
 import sys
 import logging
+from StringIO import StringIO
 
 from asserts import *
 
@@ -137,3 +138,5 @@ def check_expected_equals_input(data, expected):
         1. The two should be equal
     """
     assert_equal(data, expected)
+
+
