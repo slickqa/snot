@@ -16,6 +16,9 @@ from StringIO import StringIO
 
 from asserts import *
 
+def buildinfo():
+    return "5"
+
 @istest
 def basic_passing_test():
     pass

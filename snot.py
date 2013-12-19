@@ -11,6 +11,7 @@ import docutils.core
 import datetime
 import traceback
 import itertools
+import importlib
 from io import StringIO
 from unittest import SkipTest
 from ConfigParser import SafeConfigParser
@@ -88,6 +89,22 @@ def parse_config(files):
     parser.read(files)
     return parser
 
+def call_function(function_name):
+    module = None
+    if '.' in function_name:
+        last_dot_index = function_name.rindex('.')
+        module = function_name[:last_dot_index]
+        function_name = function_name[last_dot_index + 1:]
+    if module is None:
+        module = globals()
+    else:
+        module = importlib.import_module(module)
+    if hasattr(module, function_name):
+        func = getattr(module, function_name)
+        return func()
+    else:
+        raise Exception("could not find " + function_name + " to run.")
+
 def get_tests(testsuite):
     tests = []
     for test in testsuite:
@@ -162,6 +179,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--slick-build", action="store", default=env.get('SLICK_BUILD'),
                           metavar="SLICK_BUILD", dest="slick_build",
                           help="the build under which to file the results in slick [SLICK_BUILD]")
+        parser.add_option("--slick-build-from-function", action="store", default=env.get('SLICK_BUILD_FROM_FUNCTION'),
+                          metavar="SLICK_BUILD_FROM_FUNCTION", dest="slick_build_from_function",
+                          help="get the slick build from a function.  The parameter should be the module and function name to call [SLICK_BUILD_FROM_FUNCTION].")
         parser.add_option("--slick-testplan", action="store", default=env.get('SLICK_TESTPLAN'),
                           metavar="SLICK_TESTPLAN", dest="slick_testplan",
                           help="the testplan to link the testrun to in slick [SLICK_TESTPLAN]")
@@ -199,6 +219,12 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.project_name = options.slick_project_name
         self.release = options.slick_release
         self.build = options.slick_build
+        self.build_function = options.slick_build_from_function
+        if self.build_function:
+            try:
+                self.build = call_function(self.build_function)
+            except:
+                log.warn("Problem occured calling build information from '%s': ", self.build_function, exc_info=sys.exc_info())
         self.testplan = options.slick_testplan
         self.testrun_name = options.slick_testrun_name
         self.environment_name = options.slick_environment_name
