@@ -20,6 +20,7 @@ from ConfigParser import SafeConfigParser
 log = logging.getLogger('nose.plugins.snot')
 
 current_result = None
+testrun = None
 config = None
 
 def add_file(path, fileobj=None):
@@ -204,7 +205,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
 
     def configure(self, options, conf):
         super(SlickAsSnotPlugin, self).configure(options, conf)
-        global config
+        global config, testrun
         assert isinstance(conf, nose.config.Config)
         if options.files is not None and len(options.files) > 0:
             config = parse_config(options.files)
@@ -230,6 +231,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.environment_name = options.slick_environment_name
         self.testrun_group = options.slick_testrun_group
         self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
+        testrun = self.slick.testrun
         root_logger = logging.getLogger()
         self.loghandler = LogCapturingHandler()
         root_logger.addHandler(self.loghandler)

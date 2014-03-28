@@ -63,6 +63,43 @@ def test_stdout_logging_captured():
     log.info("A Logging Message")
     assert_true(False, "This test will always fail, so that we can see capturing")
 
+@istest
+def test_testrun_info():
+    """Test that adding testrun info to the testrun
+
+    testrun.info is a plain text field that allows you to display arbitrary testrun
+    information in the summary.
+
+    :component: Testrun
+    :author: Jason Corbett
+    :steps:
+        1. Add some text to testrun.info
+        2. Update the testrun
+    :expectedResults:
+        1. The string is able to be added to the testrun
+        2. The update works without issue
+    """
+    snot.testrun.info = "This is info from the testrun"
+    snot.testrun.update()
+
+@istest
+def test_add_file_to_testrun():
+    """Add a file to the testrun
+
+    Testruns now support file attachments.  This test attaches a file to the testrun.
+
+    :component: Testrun
+    :author: Jason Corbett
+    :steps:
+        1. Add a file to testrun
+    :expectedResults:
+        1. The file should be added and the testrun update
+    """
+    this_file = __file__
+    if this_file.endswith('pyc'):
+        this_file = this_file.strip('c')
+    snot.testrun.add_file(this_file)
+
 class ClassicUnittest(unittest.TestCase):
 
     def setUp(self):
