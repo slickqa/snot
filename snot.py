@@ -92,6 +92,8 @@ def parse_config(files):
 
 def call_function(function_name):
     module = None
+    if '.' not in sys.path:
+        sys.path.append('.')
     if '.' in function_name:
         last_dot_index = function_name.rindex('.')
         module = function_name[:last_dot_index]
