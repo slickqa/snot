@@ -100,6 +100,65 @@ def test_add_file_to_testrun():
         this_file = this_file.strip('c')
     snot.testrun.add_file(this_file)
 
+
+@istest
+def test_add_log_file():
+    """Add a log file, make sure it's viewable.
+
+    Log files need to be added with the mimetype text/plain.  This posts such a file to make sure that works
+    properly.
+
+    :component: File Upload
+    :author: Jason Corbett
+    :steps:
+        1. Add a .log file with text in it to slick.
+    :expectedResults:
+        1. File is viewable in slick.
+    """
+    log_file = "example.log"
+    with open(log_file, 'w') as log:
+        log.writelines(["This is an example log file", "with 2 lines in it."])
+    snot.add_file(log_file)
+
+
+@istest
+def test_add_xml_file():
+    """Add an xml file, make sure it's viewable.
+
+    XML files need to be added with the mimetype application/xml.  This posts such a file to make sure that works
+    properly, and is viewable in slick.
+
+    :component: File Upload
+    :author: Jason Corbett
+    :steps:
+        1. Add a .xml file with xml in it to slick.
+    :expectedResults:
+        1. File is viewable in slick (and syntax highlighted).
+    """
+    xml_file = "example.xml"
+    with open(xml_file, 'w') as xml:
+        xml.writelines(['<?xml version="1.0" encoding="UTF-8"?>\n', '<notes>\n', '  <note>Sample XML File</note>\n', '</notes>\n'])
+    snot.add_file(xml_file)
+
+
+@istest
+def test_add_mpg_file():
+    """Add an mpg file, make sure it's viewable.
+
+    Add an example MPG movie file, make sure it's viewable in slick with the appropriate viewer.
+
+    :component: File Upload
+    :author: Jason Corbett
+    :steps:
+        1. Add a .mpg movie file to slick.
+    :expectedResults:
+        1. File is viewable in slick.
+    """
+    mpg_file = "example.mpg"
+    snot.add_file(mpg_file)
+
+
+
 class ClassicUnittest(unittest.TestCase):
 
     def setUp(self):
