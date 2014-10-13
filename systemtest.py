@@ -12,7 +12,10 @@ from nose.tools import istest
 import snot
 import sys
 import logging
-from StringIO import StringIO
+try:
+    from StringIO import StringIO
+except:
+    from io import StringIO
 
 from asserts import *
 
@@ -58,7 +61,7 @@ def test_stdout_logging_captured():
         1. Nose Capture.txt has sample stdout message
         2. Nose Capture.txt has sample logging message
     """
-    print "A Stdout Message"
+    print("A Stdout Message")
     log = logging.getLogger("systemtests.test_stdout_stderr_logging_captured")
     log.info("A Logging Message")
     assert_true(False, "This test will always fail, so that we can see capturing")

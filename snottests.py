@@ -7,7 +7,10 @@ from nose.tools import istest
 from nose.plugins import Plugin
 
 import sys
-import ConfigParser
+try:
+    import ConfigParser
+except:
+    import configparser as ConfigParser
 
 import logging
 

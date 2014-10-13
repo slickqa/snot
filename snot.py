@@ -14,7 +14,10 @@ import itertools
 import importlib
 from io import StringIO
 from unittest import SkipTest
-from ConfigParser import SafeConfigParser
+try:
+    from ConfigParser import SafeConfigParser
+except:
+    from configparser import SafeConfigParser
 
 
 log = logging.getLogger('nose.plugins.snot')
@@ -255,6 +258,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 testdata.automationTool = 'python-nose'
             slicktest = Testcase()
             slicktest.name = testdata.name
+            if '{' in testdata.name and '}' in testdata.name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
+                slicktest.name = testdata.name.format(*test.test.arg)
             slicktest.automationId = testdata.automationId
             slicktest.automationTool = testdata.automationTool
             for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:

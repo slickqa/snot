@@ -26,7 +26,7 @@ assert_is = _t.assertIs
 assert_is_not = _t.assertIsNot
 assert_dict_equal = _t.assertDictEqual
 assert_dict_contains_subset = _t.assertDictContainsSubset
-assert_items_equal = _t.assertItemsEqual
+#assert_items_equal = _t.assertItemsEqual
 assert_multi_line_equal = _t.assertMultiLineEqual
 assert_less = _t.assertLess
 assert_less_equal = _t.assertLessEqual
@@ -38,7 +38,7 @@ assert_is_instance = _t.assertIsInstance
 assert_not_is_instance = _t.assertNotIsInstance
 assert_raises_regexp = _t.assertRaisesRegexp
 assert_regexp_matches = _t.assertRegexpMatches
-assert_not_regexp_matches = _t.assertNotRegexpMatches
+#assert_not_regexp_matches = _t.assertNotRegexpMatches
 
 del _t
 del Dummy
