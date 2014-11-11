@@ -146,7 +146,7 @@ class LogCapturingHandler(logging.Handler):
 
     def emit(self, record):
         for ignore_name in LogCapturingHandler.ignore:
-            if record.name.startswith(ignore_name):
+            if record.name.startswith(ignore_name) and not record.name.startswith('slickwd'):
                 return
         msg = self.format(record)
         if current_result is not None:
