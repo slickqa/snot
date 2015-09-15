@@ -264,20 +264,31 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             slicktest.automationTool = testdata.automationTool
             for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
                 if hasattr(testdata, attribute):
-                    setattr(slicktest, attribute, getattr(testdata, attribute))
+                    data = getattr(testdata, attribute)
+                    if '{' in data and '}' in data and test.test.arg is not None and len(test.test.arg) > 0:
+                        data = data.format(*test.test.arg)
+                    setattr(slicktest, attribute, data)
             slicktest.project = self.slick.project.create_reference()
             if hasattr(testdata, 'component'):
-                component = self.slick.get_component(testdata.component)
+                comp_name = testdata.component
+                if '{' in comp_name and '}' in comp_name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
+                    comp_name = comp_name.format(*test.test.arg)
+                component = self.slick.get_component(comp_name)
                 if component is None:
-                    component = self.slick.create_component(testdata.component)
+                    component = self.slick.create_component(comp_name)
                 slicktest.component = component.create_reference()
             if hasattr(testdata, 'steps'):
                 slicktest.steps = []
                 for step in testdata.steps:
                     slickstep = Step()
                     slickstep.name = step
+                    if '{' in step and '}' in step and test.test.arg is not None and len(test.test.arg) > 0:
+                        slickstep.name = step.format(*test.test.arg)
                     if hasattr(testdata, 'expectedResults') and len(testdata.expectedResults) > len(slicktest.steps):
-                        slickstep.expectedResult = testdata.expectedResults[len(slicktest.steps)]
+                        expectedResult = testdata.expectedResults[len(slicktest.steps)]
+                        slickstep.expectedResult = expectedResult
+                        if '{' in expectedResult and '}' in expectedResult and test.test.arg is not None and len(test.test.arg) > 0:
+                            slickstep.expectedResult = expectedResult.format(*test.test.arg)
                     slicktest.steps.append(slickstep)
             self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=RunStatus.TO_BE_RUN)
 
