@@ -85,7 +85,10 @@ class DocStringMetaData(object):
             elif node.firstChild.firstChild.nodeValue == 'tags':
                 setattr(self, node.firstChild.firstChild.nodeValue, node.childNodes[1].firstChild.firstChild.nodeValue.split(", "))
             else:
-                setattr(self, node.firstChild.firstChild.nodeValue, node.childNodes[1].firstChild.firstChild.nodeValue)
+                try:
+                    setattr(self, node.firstChild.firstChild.nodeValue, node.childNodes[1].firstChild.firstChild.nodeValue)
+                except:
+                    sys.stderr.write("Problem parsing comment for test: {}".format(self.name))
 
 
 def parse_config(files):
