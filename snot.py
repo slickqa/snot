@@ -36,6 +36,17 @@ def add_file(path, fileobj=None):
     if current_result is not None:
         current_result.add_file(path, fileobj)
 
+def add_file_to_testrun(path, fileobj=None):
+    """
+    Upload a file to slick, adding it to the current testrun.  If there is no current slick testrun this will do
+    nothing!
+
+    :param path: The path to the specified file
+    :return: Nothing
+    """
+    if testrun is not None:
+        testrun.add_file(path, fileobj)
+
 class DocStringMetaData(object):
 
     def __init__(self, func):
