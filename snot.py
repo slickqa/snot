@@ -265,6 +265,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             testmethod = test.test._testMethodName
             if testmethod == 'runTest' and hasattr(test.test, "test"):
                 testmethod = 'test'
+
             testdata = DocStringMetaData(getattr(test.test, testmethod))
             if not hasattr(testdata, 'automationId'):
                 testdata.automationId = test.id()
@@ -276,34 +277,38 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 slicktest.name = testdata.name.format(*test.test.arg)
             slicktest.automationId = testdata.automationId
             slicktest.automationTool = testdata.automationTool
-            for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
-                if hasattr(testdata, attribute):
-                    data = getattr(testdata, attribute)
-                    if '{' in data and '}' in data and test.test.arg is not None and len(test.test.arg) > 0:
-                        data = data.format(*test.test.arg)
-                    setattr(slicktest, attribute, data)
-            slicktest.project = self.slick.project.create_reference()
-            if hasattr(testdata, 'component'):
-                comp_name = testdata.component
-                if '{' in comp_name and '}' in comp_name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
-                    comp_name = comp_name.format(*test.test.arg)
-                component = self.slick.get_component(comp_name)
-                if component is None:
-                    component = self.slick.create_component(comp_name)
-                slicktest.component = component.create_reference()
-            if hasattr(testdata, 'steps'):
-                slicktest.steps = []
-                for step in testdata.steps:
-                    slickstep = Step()
-                    slickstep.name = step
-                    if '{' in step and '}' in step and test.test.arg is not None and len(test.test.arg) > 0:
-                        slickstep.name = step.format(*test.test.arg)
-                    if hasattr(testdata, 'expectedResults') and len(testdata.expectedResults) > len(slicktest.steps):
-                        expectedResult = testdata.expectedResults[len(slicktest.steps)]
-                        slickstep.expectedResult = expectedResult
-                        if '{' in expectedResult and '}' in expectedResult and test.test.arg is not None and len(test.test.arg) > 0:
-                            slickstep.expectedResult = expectedResult.format(*test.test.arg)
-                    slicktest.steps.append(slickstep)
+            try:
+                for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
+                    if attribute is not None and hasattr(testdata, attribute) and getattr(testdata, attribute) is not None:
+                        data = getattr(testdata, attribute)
+                        if '{' in data and '}' in data and test.test.arg is not None and len(test.test.arg) > 0:
+                            data = data.format(*test.test.arg)
+                        setattr(slicktest, attribute, data)
+                slicktest.project = self.slick.project.create_reference()
+                if hasattr(testdata, 'component'):
+                    comp_name = testdata.component
+                    if comp_name is not None and '{' in comp_name and '}' in comp_name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
+                        comp_name = comp_name.format(*test.test.arg)
+                    component = self.slick.get_component(comp_name)
+                    if component is None:
+                        component = self.slick.create_component(comp_name)
+                    slicktest.component = component.create_reference()
+                if hasattr(testdata, 'steps'):
+                    slicktest.steps = []
+                    for step in testdata.steps:
+                        slickstep = Step()
+                        slickstep.name = step
+                        if step is not None and '{' in step and '}' in step and test.test.arg is not None and len(test.test.arg) > 0:
+                            slickstep.name = step.format(*test.test.arg)
+                        if hasattr(testdata, 'expectedResults') and len(testdata.expectedResults) > len(slicktest.steps):
+                            expectedResult = testdata.expectedResults[len(slicktest.steps)]
+                            slickstep.expectedResult = expectedResult
+                            if expectedResult is not None and '{' in expectedResult and '}' in expectedResult and test.test.arg is not None and len(test.test.arg) > 0:
+                                slickstep.expectedResult = expectedResult.format(*test.test.arg)
+                        slicktest.steps.append(slickstep)
+            except:
+                log.error("Error occured when parsing for test {}:".format(test.id()), exc_info=sys.exc_info())
+
             self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=RunStatus.TO_BE_RUN)
 
     def startTest(self, test):
