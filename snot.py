@@ -365,6 +365,12 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     stored_file = self.slick.slickcon.files.upload_local_file("Nose Capture.txt", capture_fileobj)
                     result.files.append(stored_file)
                     capture_fileobj.close()
+            elif isinstance(sys.stdout, StringIO):
+                if not hasattr(result, 'files'):
+                    result.files = []
+                stored_file = self.slick.slickcon.files.upload_local_file("Nose Capture.txt", sys.stdout)
+                result.files.append(stored_file)
+                
 
             if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
                 del result.config
