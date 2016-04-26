@@ -184,6 +184,7 @@ class LogCapturingHandler(logging.Handler):
 
 class SlickAsSnotPlugin(nose.plugins.Plugin):
     name = "snot"
+    score = 1800
 
     def options(self, parser, env=os.environ):
         super(SlickAsSnotPlugin, self).options(parser, env=env)
@@ -328,6 +329,14 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             global current_result
             current_result = result
 
+
+    def afterTest(self, test):
+        """Clear capture buffer.
+        """
+        if hasattr(sys.stdout, '__class__') and hasattr(sys.stdout.__class__, '__name__') and sys.stdout.__class__.__name__ == 'StringIO':
+            add_file("Nose Capture.txt", sys.stdout)
+                
+
     def addSlickResult(self, test, resultstatus=ResultStatus.PASS, err=None):
         if not self.enabled:
             return
@@ -352,25 +361,6 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 if len(message_parts) > 2:
                     capture = '\n'.join(message_parts[1:])
                 result.reason = '\n'.join(reason_lines)
-
-                if capture is not None:
-                    capture_fileobj = None
-                    if sys.version_info[0] == 2:
-                        capture_fileobj = StringIO(capture.decode('UTF8'))
-                    else:
-                        capture_fileobj = StringIO(capture)
-
-                    if not hasattr(result, 'files'):
-                        result.files = []
-                    stored_file = self.slick.slickcon.files.upload_local_file("Nose Capture.txt", capture_fileobj)
-                    result.files.append(stored_file)
-                    capture_fileobj.close()
-            elif isinstance(sys.stdout, StringIO):
-                if not hasattr(result, 'files'):
-                    result.files = []
-                stored_file = self.slick.slickcon.files.upload_local_file("Nose Capture.txt", sys.stdout)
-                result.files.append(stored_file)
-                
 
             if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
                 del result.config
