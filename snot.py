@@ -282,7 +282,6 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 testdata.automationKey = "{0}:{1}".format(testfile, address[1])
                 if len(address) > 2:
                     testdata.automationKey = ".".join([testdata.automationKey, ] + address[2:])
-                log.warn("Test address = " + testdata.automationKey)
             slicktest = Testcase()
             slicktest.name = testdata.name
             if '{' in testdata.name and '}' in testdata.name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
