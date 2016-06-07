@@ -215,6 +215,12 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--slick-testrun-group", action="store", default=env.get('SLICK_TESTRUN_GROUP'),
                           metavar="SLICK_TESTRUN_GROUP", dest="slick_testrun_group",
                           help="the name of the testrun group in slick to add this testrun to (optional) [SLICK_ENVIRONMENT_NAME]")
+        schedule_results_default = "normal"
+        if(env.has_key('SLICK_SCHEDULE_RESULTS')):
+            schedule_results_default = "schedule"
+        parser.add_option("--slick-schedule-results", action="store_const", const="schedule", default=schedule_results_default,
+                          metavar="SLICK_SCHEDULE_RESULTS", dest="slick_mode",
+                          help="Schedule empty results in slick, but do not run the tests")
 
         # Make sure the log capture doesn't show slick related logging statements
         if 'NOSE_LOGFILTER' in env:
@@ -250,6 +256,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.testrun_name = options.slick_testrun_name
         self.environment_name = options.slick_environment_name
         self.testrun_group = options.slick_testrun_group
+        self.mode = options.slick_mode
         self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
         testrun = self.slick.testrun
         root_logger = logging.getLogger()
@@ -319,8 +326,16 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                         slicktest.steps.append(slickstep)
             except:
                 log.error("Error occured when parsing for test {}:".format(test.id()), exc_info=sys.exc_info())
+            runstatus = RunStatus.TO_BE_RUN
+            if self.mode == 'schedule':
+                runstatus = RunStatus.SCHEDULED
+            self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus)
 
-            self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=RunStatus.TO_BE_RUN)
+    def beforeTest(self, test):
+        if not self.enabled:
+            return
+        if self.mode == 'schedule':
+            raise SkipTest()
 
     def startTest(self, test):
         if not self.enabled:
@@ -389,6 +404,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
 
     def addError(self, test, err):
         if not self.enabled:
+            return
+        if self.mode == 'schedule':
             return
         if err[0] is SkipTest:
             self.addSlickResult(test, ResultStatus.SKIPPED, err)

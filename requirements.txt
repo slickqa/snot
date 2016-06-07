@@ -1,4 +1,4 @@
 setuptools
-slickqa
+slickqa>=2.0.666
 nose
 docutils
