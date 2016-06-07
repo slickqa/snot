@@ -1,7 +1,8 @@
 __author__ = 'jcorbett'
 
 import nose, nose.plugins, nose.case, nose.config
-from slickqa import SlickQA, Testcase, ResultStatus, RunStatus, Step, Result
+from slickqa import SlickQA, Testcase, ResultStatus, RunStatus, Step, Result, make_result_updatable, make_testrun_updatable
+from slickqa.connection import SlickConnection
 
 import re
 import os
@@ -234,6 +235,12 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--slick-schedule-results", action="store_const", const="schedule", default=schedule_results_default,
                           metavar="SLICK_SCHEDULE_RESULTS", dest="slick_mode",
                           help="Schedule empty results in slick, but do not run the tests")
+        parser.add_option("--slick-testrun-id", action="store", default=env.get('SLICK_TESTRUN_ID'),
+                          metavar="SLICK_TESTRUN_ID", dest="slick_testrun_id",
+                          help="Instead of creating a new testrun, use an existing one.")
+        parser.add_option("--slick-result-id", action="store", default=env.get('SLICK_RESULT_ID'),
+                          metavar="SLICK_RESULT_ID", dest="slick_result_id",
+                          help="Instead of creating a new result in the testrun, update an existing one.")
 
         # Make sure the log capture doesn't show slick related logging statements
         if 'NOSE_LOGFILTER' in env:
@@ -249,11 +256,18 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             config = parse_config(options.files)
         if not self.enabled:
             return
-        for required in ['slick_url', 'slick_project_name']:
-            if (not hasattr(options, required)) or getattr(options, required) is None or getattr(options, required) == "":
-                log.error("You can't use snot without specifying at least the slick url and the project name.")
-                self.enabled = False
-                return
+        self.use_existing_testrun = False
+        if hasattr(options, 'slick_testrun_id') and hasattr(options, 'slick_result_id') and \
+           options.slick_testrun_id is not None and options.slick_result_id is not None:
+            self.use_existing_testrun = True
+            self.testrun_id = options.slick_testrun_id
+            self.result_id = options.slick_result_id
+        else:
+            for required in ['slick_url', 'slick_project_name']:
+                if (not hasattr(options, required)) or getattr(options, required) is None or getattr(options, required) == "":
+                    log.error("You can't use snot without specifying at least the slick url and the project name.")
+                    self.enabled = False
+                    return
         self.url = options.slick_url
         self.project_name = options.slick_project_name
         self.release = options.slick_release
@@ -269,8 +283,14 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.environment_name = options.slick_environment_name
         self.testrun_group = options.slick_testrun_group
         self.mode = options.slick_mode
-        self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
-        testrun = self.slick.testrun
+        testrun = None
+        if not self.use_existing_testrun:
+            self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
+            testrun = self.slick.testrun
+        else:
+            self.slick = SlickConnection(self.url)
+            testrun = self.slick.testruns(options.slick_testrun_id).get()
+            make_testrun_updatable(testrun, self.slick)
         root_logger = logging.getLogger()
         self.loghandler = LogCapturingHandler()
         root_logger.addHandler(self.loghandler)
@@ -282,75 +302,80 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.results = dict()
         for test in get_tests(testsuite):
             assert isinstance(test, nose.case.Test)
-            testmethod = test.test._testMethodName
-            if testmethod == 'runTest' and hasattr(test.test, "test"):
-                testmethod = 'test'
+            if self.use_existing_testrun:
+                result = self.slick.results(self.result_id).get()
+                make_result_updatable(result, self.slick)
+                self.results[test.id()] = result
+            else:
+                testmethod = test.test._testMethodName
+                if testmethod == 'runTest' and hasattr(test.test, "test"):
+                    testmethod = 'test'
 
-            testdata = DocStringMetaData(getattr(test.test, testmethod))
-            if not hasattr(testdata, 'automationId'):
-                testdata.automationId = test.id()
-            if not hasattr(testdata, 'automationTool'):
-                testdata.automationTool = 'python-nose'
-            if not hasattr(testdata, 'automationKey'):
-                # build key
-                address = list(test.address())
-                testfile = os.path.relpath(address[0])
-                module_name = os.path.basename(address[0])[:-3]
-                if module_name == address[1]:
-                    address.pop(1)
-                testdata.automationKey = "{0}:{1}".format(testfile, address[1])
-                if len(address) > 2:
-                    testdata.automationKey = ".".join([testdata.automationKey, ] + address[2:])
-            slicktest = Testcase()
-            slicktest.name = testdata.name
-            if '{' in testdata.name and '}' in testdata.name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
-                slicktest.name = testdata.name.format(*test.test.arg)
-            slicktest.automationId = testdata.automationId
-            slicktest.automationTool = testdata.automationTool
-            result_attributes = {}
-            try:
-                actual_test_method = getattr(test.test, testmethod)
-                if hasattr(actual_test_method, REQUIRES_ATTRIBUTE):
-                    requires_value = getattr(actual_test_method, REQUIRES_ATTRIBUTE)
-                    for requirement in requires_value:
-                        result_attributes[requirement] = "required"
-            except:
-                log.error("Error occurred while trying to build attributes.", exc_info=sys.exc_info)
-            try:
-                for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
-                    if attribute is not None and hasattr(testdata, attribute) and getattr(testdata, attribute) is not None:
-                        data = getattr(testdata, attribute)
-                        if '{' in data and '}' in data and test.test.arg is not None and len(test.test.arg) > 0:
-                            data = data.format(*test.test.arg)
-                        setattr(slicktest, attribute, data)
-                slicktest.project = self.slick.project.create_reference()
-                if hasattr(testdata, 'component'):
-                    comp_name = testdata.component
-                    if comp_name is not None and '{' in comp_name and '}' in comp_name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
-                        comp_name = comp_name.format(*test.test.arg)
-                    component = self.slick.get_component(comp_name)
-                    if component is None:
-                        component = self.slick.create_component(comp_name)
-                    slicktest.component = component.create_reference()
-                if hasattr(testdata, 'steps'):
-                    slicktest.steps = []
-                    for step in testdata.steps:
-                        slickstep = Step()
-                        slickstep.name = step
-                        if step is not None and '{' in step and '}' in step and test.test.arg is not None and len(test.test.arg) > 0:
-                            slickstep.name = step.format(*test.test.arg)
-                        if hasattr(testdata, 'expectedResults') and len(testdata.expectedResults) > len(slicktest.steps):
-                            expectedResult = testdata.expectedResults[len(slicktest.steps)]
-                            slickstep.expectedResult = expectedResult
-                            if expectedResult is not None and '{' in expectedResult and '}' in expectedResult and test.test.arg is not None and len(test.test.arg) > 0:
-                                slickstep.expectedResult = expectedResult.format(*test.test.arg)
-                        slicktest.steps.append(slickstep)
-            except:
-                log.error("Error occured when parsing for test {}:".format(test.id()), exc_info=sys.exc_info())
-            runstatus = RunStatus.TO_BE_RUN
-            if self.mode == 'schedule':
-                runstatus = RunStatus.SCHEDULED
-            self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes)
+                testdata = DocStringMetaData(getattr(test.test, testmethod))
+                if not hasattr(testdata, 'automationId'):
+                    testdata.automationId = test.id()
+                if not hasattr(testdata, 'automationTool'):
+                    testdata.automationTool = 'python-nose'
+                if not hasattr(testdata, 'automationKey'):
+                    # build key
+                    address = list(test.address())
+                    testfile = os.path.relpath(address[0])
+                    module_name = os.path.basename(address[0])[:-3]
+                    if module_name == address[1]:
+                        address.pop(1)
+                    testdata.automationKey = "{0}:{1}".format(testfile, address[1])
+                    if len(address) > 2:
+                        testdata.automationKey = ".".join([testdata.automationKey, ] + address[2:])
+                slicktest = Testcase()
+                slicktest.name = testdata.name
+                if '{' in testdata.name and '}' in testdata.name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
+                    slicktest.name = testdata.name.format(*test.test.arg)
+                slicktest.automationId = testdata.automationId
+                slicktest.automationTool = testdata.automationTool
+                result_attributes = {}
+                try:
+                    actual_test_method = getattr(test.test, testmethod)
+                    if hasattr(actual_test_method, REQUIRES_ATTRIBUTE):
+                        requires_value = getattr(actual_test_method, REQUIRES_ATTRIBUTE)
+                        for requirement in requires_value:
+                            result_attributes[requirement] = "required"
+                except:
+                    log.error("Error occurred while trying to build attributes.", exc_info=sys.exc_info)
+                try:
+                    for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
+                        if attribute is not None and hasattr(testdata, attribute) and getattr(testdata, attribute) is not None:
+                            data = getattr(testdata, attribute)
+                            if '{' in data and '}' in data and test.test.arg is not None and len(test.test.arg) > 0:
+                                data = data.format(*test.test.arg)
+                            setattr(slicktest, attribute, data)
+                    slicktest.project = self.slick.project.create_reference()
+                    if hasattr(testdata, 'component'):
+                        comp_name = testdata.component
+                        if comp_name is not None and '{' in comp_name and '}' in comp_name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
+                            comp_name = comp_name.format(*test.test.arg)
+                        component = self.slick.get_component(comp_name)
+                        if component is None:
+                            component = self.slick.create_component(comp_name)
+                        slicktest.component = component.create_reference()
+                    if hasattr(testdata, 'steps'):
+                        slicktest.steps = []
+                        for step in testdata.steps:
+                            slickstep = Step()
+                            slickstep.name = step
+                            if step is not None and '{' in step and '}' in step and test.test.arg is not None and len(test.test.arg) > 0:
+                                slickstep.name = step.format(*test.test.arg)
+                            if hasattr(testdata, 'expectedResults') and len(testdata.expectedResults) > len(slicktest.steps):
+                                expectedResult = testdata.expectedResults[len(slicktest.steps)]
+                                slickstep.expectedResult = expectedResult
+                                if expectedResult is not None and '{' in expectedResult and '}' in expectedResult and test.test.arg is not None and len(test.test.arg) > 0:
+                                    slickstep.expectedResult = expectedResult.format(*test.test.arg)
+                            slicktest.steps.append(slickstep)
+                except:
+                    log.error("Error occured when parsing for test {}:".format(test.id()), exc_info=sys.exc_info())
+                runstatus = RunStatus.TO_BE_RUN
+                if self.mode == 'schedule':
+                    runstatus = RunStatus.SCHEDULED
+                self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes)
 
     def beforeTest(self, test):
         if not self.enabled:
@@ -435,7 +460,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.addSlickResult(test, ResultStatus.FAIL, err)
 
     def finalize(self, result):
-        if not self.enabled:
+        if not self.enabled or self.use_existing_testrun or self.mode == 'schedule':
             return
         self.slick.finish_testrun()
 
