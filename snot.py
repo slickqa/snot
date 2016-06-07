@@ -26,6 +26,16 @@ current_result = None
 testrun = None
 config = None
 
+REQUIRES_ATTRIBUTE='slick_requires'
+
+
+def requires(*args):
+    def _wrap_with_requires(f):
+        setattr(f, REQUIRES_ATTRIBUTE, args)
+        return f
+    return _wrap_with_requires
+
+
 def add_file(path, fileobj=None):
     """
     Upload a file to slick, adding it to the current test result.  If no test is running, this will do nothing!
@@ -35,6 +45,7 @@ def add_file(path, fileobj=None):
     """
     if current_result is not None:
         current_result.add_file(path, fileobj)
+
 
 def add_file_to_testrun(path, fileobj=None):
     """
@@ -46,6 +57,7 @@ def add_file_to_testrun(path, fileobj=None):
     """
     if testrun is not None:
         testrun.add_file(path, fileobj)
+
 
 class DocStringMetaData(object):
 
@@ -107,6 +119,7 @@ def parse_config(files):
     parser.read(files)
     return parser
 
+
 def call_function(function_name):
     module = None
     if '.' not in sys.path:
@@ -125,6 +138,7 @@ def call_function(function_name):
     else:
         raise Exception("could not find " + function_name + " to run.")
 
+
 def get_tests(testsuite):
     tests = []
     for test in testsuite:
@@ -138,6 +152,7 @@ def get_tests(testsuite):
         else:
             tests.append(test)
     return tests
+
 
 class LogCapturingHandler(logging.Handler):
 
@@ -178,8 +193,6 @@ class LogCapturingHandler(logging.Handler):
                                              exceptionclassname=record.exc_info[0].__name__,
                                              exceptionmessage=excmessage,
                                              stacktrace=traceback.format_tb(record.exc_info[2]))
-
-
 
 
 class SlickAsSnotPlugin(nose.plugins.Plugin):
@@ -227,7 +240,6 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             env['NOSE_LOGFILTER'] = env.get('NOSE_LOGFILTER') + ",-slick,-requests,-slick-reporter"
         else:
             env['NOSE_LOGFILTER'] = "-slick,-requests,-slick-reporter"
-
 
     def configure(self, options, conf):
         super(SlickAsSnotPlugin, self).configure(options, conf)
@@ -295,6 +307,15 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 slicktest.name = testdata.name.format(*test.test.arg)
             slicktest.automationId = testdata.automationId
             slicktest.automationTool = testdata.automationTool
+            result_attributes = {}
+            try:
+                actual_test_method = getattr(test.test, testmethod)
+                if hasattr(actual_test_method, REQUIRES_ATTRIBUTE):
+                    requires_value = getattr(actual_test_method, REQUIRES_ATTRIBUTE)
+                    for requirement in requires_value:
+                        result_attributes[requirement] = "required"
+            except:
+                log.error("Error occurred while trying to build attributes.", exc_info=sys.exc_info)
             try:
                 for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
                     if attribute is not None and hasattr(testdata, attribute) and getattr(testdata, attribute) is not None:
@@ -329,7 +350,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             runstatus = RunStatus.TO_BE_RUN
             if self.mode == 'schedule':
                 runstatus = RunStatus.SCHEDULED
-            self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus)
+            self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes)
 
     def beforeTest(self, test):
         if not self.enabled:
@@ -354,13 +375,11 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             global current_result
             current_result = result
 
-
     def afterTest(self, test):
         """Clear capture buffer.
         """
         if hasattr(sys.stdout, '__class__') and hasattr(sys.stdout.__class__, '__name__') and sys.stdout.__class__.__name__ == 'StringIO':
             add_file("Nose Capture.txt", sys.stdout)
-                
 
     def addSlickResult(self, test, resultstatus=ResultStatus.PASS, err=None):
         if not self.enabled:
@@ -392,10 +411,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             if hasattr(result, 'component') and not hasattr(result.component, 'id'):
                 del result.component
             result.update()
-
         else:
             log.error("Unrecognized test %s", test.id())
-
 
     def addSuccess(self, test):
         if not self.enabled:
