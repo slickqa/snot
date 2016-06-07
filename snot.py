@@ -272,6 +272,17 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 testdata.automationId = test.id()
             if not hasattr(testdata, 'automationTool'):
                 testdata.automationTool = 'python-nose'
+            if not hasattr(testdata, 'automationKey'):
+                # build key
+                address = list(test.address())
+                testfile = os.path.relpath(address[0])
+                module_name = os.path.basename(address[0])[:-3]
+                if module_name == address[1]:
+                    address.pop(1)
+                testdata.automationKey = "{0}:{1}".format(testfile, address[1])
+                if len(address) > 2:
+                    testdata.automationKey = ".".join([testdata.automationKey, ] + address[2:])
+                log.warn("Test address = " + testdata.automationKey)
             slicktest = Testcase()
             slicktest.name = testdata.name
             if '{' in testdata.name and '}' in testdata.name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
