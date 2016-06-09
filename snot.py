@@ -345,6 +345,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                             result_attributes[requirement] = "required"
                 except:
                     log.error("Error occurred while trying to build attributes.", exc_info=sys.exc_info)
+                if self.mode == 'schedule':
+                    result_attributes['scheduled'] = "true"
                 try:
                     for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
                         if attribute is not None and hasattr(testdata, attribute) and getattr(testdata, attribute) is not None:
