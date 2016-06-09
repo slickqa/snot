@@ -1,5 +1,3 @@
-__author__ = 'jcorbett'
-
 import nose, nose.plugins, nose.case, nose.config
 from slickqa import SlickQA, Testcase, ResultStatus, RunStatus, Step, Result, make_result_updatable, make_testrun_updatable
 from slickqa.connection import SlickConnection
@@ -20,6 +18,8 @@ try:
 except:
     from configparser import SafeConfigParser
 
+__author__ = 'jcorbett'
+
 
 log = logging.getLogger('nose.plugins.snot')
 
@@ -28,6 +28,10 @@ testrun = None
 config = None
 
 REQUIRES_ATTRIBUTE='slick_requires'
+
+
+class PassedOnRetry(Exception):
+    pass
 
 
 def requires(*args):
@@ -423,7 +427,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 if sys.version_info[0] == 2:
                     reason_lines = traceback.format_exception(*err)
                 else:
-                    reason_lines = traceback.format_exception(*err, chain=not isinstance(err[1],str))
+                    reason_lines = traceback.format_exception(*err, chain=not isinstance(err[1], str))
                 message_parts = reason_lines[-1].split('\n')
                 reason_lines[-1] = message_parts[0]
                 capture = None
@@ -451,6 +455,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             return
         if err[0] is SkipTest:
             self.addSlickResult(test, ResultStatus.SKIPPED, err)
+        elif err[0] is PassedOnRetry:
+            self.addSlickResult(test, ResultStatus.PASSED_ON_RETRY, err)
         else:
             self.addSlickResult(test, ResultStatus.BROKEN_TEST, err)
 

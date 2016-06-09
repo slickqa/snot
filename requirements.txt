@@ -1,5 +1,5 @@
 setuptools
-slickqa>=2.0.666
+slickqa>=2.0.668
 nose
 docutils
 decorator
