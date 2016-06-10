@@ -288,13 +288,15 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.testrun_group = options.slick_testrun_group
         self.mode = options.slick_mode
         testrun = None
-        if not self.use_existing_testrun:
-            self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
-            testrun = self.slick.testrun
-        else:
+        if self.use_existing_testrun:
             self.slick = SlickConnection(self.url)
             testrun = self.slick.testruns(options.slick_testrun_id).get()
             make_testrun_updatable(testrun, self.slick)
+        else:
+            self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
+            testrun = self.slick.testrun
+            testrun.attributes = {'scheduled': 'true'}
+            testrun.update()
         root_logger = logging.getLogger()
         self.loghandler = LogCapturingHandler()
         root_logger.addHandler(self.loghandler)
