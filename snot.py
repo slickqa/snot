@@ -295,8 +295,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         else:
             self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
             testrun = self.slick.testrun
-            testrun.attributes = {'scheduled': 'true'}
-            testrun.update()
+            if self.mode == 'scheduled':
+            	testrun.attributes = {'scheduled': 'true'}
+            	testrun.update()
         root_logger = logging.getLogger()
         self.loghandler = LogCapturingHandler()
         root_logger.addHandler(self.loghandler)
