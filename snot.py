@@ -233,6 +233,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--slick-testrun-group", action="store", default=env.get('SLICK_TESTRUN_GROUP'),
                           metavar="SLICK_TESTRUN_GROUP", dest="slick_testrun_group",
                           help="the name of the testrun group in slick to add this testrun to (optional) [SLICK_ENVIRONMENT_NAME]")
+        parser.add_option("--slick-agent-name", action="store", default=env.get('SLICK_AGENT_NAME'),
+                          metavar="SLICK_AGENT_NAME", dest="slick_agent_name",
+                          help="what to put in slick's hostname field in the result.")
         schedule_results_default = "normal"
         if(env.has_key('SLICK_SCHEDULE_RESULTS')):
             schedule_results_default = "schedule"
@@ -287,6 +290,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.environment_name = options.slick_environment_name
         self.testrun_group = options.slick_testrun_group
         self.mode = options.slick_mode
+        self.agent_name = options.agent_name
         testrun = None
         if self.use_existing_testrun:
             self.slick = SlickConnection(self.url)
@@ -398,6 +402,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         if test.id() in self.results:
             result = self.results[test.id()]
             assert isinstance(result, Result)
+            if self.agent_name is not None:
+                result.hostname = self.agent_name
             result.runstatus = RunStatus.RUNNING
             result.started = datetime.datetime.now()
             result.reason = ""
