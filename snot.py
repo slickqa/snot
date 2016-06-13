@@ -290,7 +290,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.environment_name = options.slick_environment_name
         self.testrun_group = options.slick_testrun_group
         self.mode = options.slick_mode
-        self.agent_name = options.agent_name
+        self.agent_name = options.slick_agent_name
         testrun = None
         if self.use_existing_testrun:
             self.slick = SlickConnection(self.url)
