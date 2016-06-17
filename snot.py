@@ -11,6 +11,7 @@ import datetime
 import traceback
 import itertools
 import importlib
+import time
 from io import StringIO
 from unittest import SkipTest
 try:
@@ -27,7 +28,7 @@ current_result = None
 testrun = None
 config = None
 
-REQUIRES_ATTRIBUTE='slick_requires'
+REQUIRES_ATTRIBUTE = 'slick_requires'
 
 
 class PassedOnRetry(Exception):
@@ -237,7 +238,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                           metavar="SLICK_AGENT_NAME", dest="slick_agent_name",
                           help="what to put in slick's hostname field in the result.")
         schedule_results_default = "normal"
-        if(env.has_key('SLICK_SCHEDULE_RESULTS')):
+        if 'SLICK_SCHEDULE_RESULTS' in env:
             schedule_results_default = "schedule"
         parser.add_option("--slick-schedule-results", action="store_const", const="schedule", default=schedule_results_default,
                           metavar="SLICK_SCHEDULE_RESULTS", dest="slick_mode",
@@ -477,8 +478,16 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.addSlickResult(test, ResultStatus.FAIL, err)
 
     def finalize(self, result):
-        if not self.enabled or self.use_existing_testrun or self.mode == 'schedule':
+        global testrun
+        if not self.enabled or self.mode == 'schedule':
             return
+        elif self.use_existing_testrun:
+            testrun = self.slick.testruns(testrun.id).get()
+            if testrun.resultsByStatus.NO_RESULT == 0:
+                # finish testrun
+                testrun.runFinished = int(round(time.time() * 1000))
+                testrun.state = RunStatus.FINISHED
+                self.slick.testruns(testrun).update()
         self.slick.finish_testrun()
 
 
