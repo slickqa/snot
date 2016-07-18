@@ -37,7 +37,10 @@ class PassedOnRetry(Exception):
 
 def requires(*args):
     def _wrap_with_requires(f):
-        setattr(f, REQUIRES_ATTRIBUTE, args)
+        if hasattr(f, REQUIRES_ATTRIBUTE):
+            (getattr(f, REQUIRES_ATTRIBUTE)).extend(args)
+        else:
+            setattr(f, REQUIRES_ATTRIBUTE, args)
         return f
     return _wrap_with_requires
 
