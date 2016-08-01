@@ -451,6 +451,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 capture = None
                 if len(message_parts) > 2:
                     capture = '\n'.join(message_parts[1:])
+                    reason_lines.reverse()
                 result.reason = '\n'.join(reason_lines)
 
             if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
