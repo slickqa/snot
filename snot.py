@@ -471,6 +471,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         if not self.enabled:
             return
         if self.mode == 'schedule':
+            sys.exit(0)
             return
         if err[0] is SkipTest:
             self.addSlickResult(test, ResultStatus.SKIPPED, err)
