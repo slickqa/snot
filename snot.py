@@ -431,6 +431,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
     def addSlickResult(self, test, resultstatus=ResultStatus.PASS, err=None):
         if not self.enabled:
             return
+        if self.mode == 'schedule':
+            sys.exit(0)
+            return
         if test.id() in self.results:
             result = self.results[test.id()]
             assert isinstance(result, Result)
@@ -465,6 +468,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
     def addSuccess(self, test):
         if not self.enabled:
             return
+        if self.mode == 'schedule':
+            sys.exit(0)
+            return
         self.addSlickResult(test)
 
     def addError(self, test, err):
@@ -482,6 +488,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
 
     def addFailure(self, test, err):
         if not self.enabled:
+            return
+        if self.mode == 'schedule':
+            sys.exit(0)
             return
         self.addSlickResult(test, ResultStatus.FAIL, err)
 
