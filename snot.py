@@ -396,6 +396,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 if self.mode == 'schedule':
                     runstatus = RunStatus.SCHEDULED
                 self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes)
+        if self.enabled and self.mode == 'schedule':
+            sys.exit(0)
 
     def beforeTest(self, test):
         if not self.enabled:
