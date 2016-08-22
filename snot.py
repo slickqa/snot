@@ -246,6 +246,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--slick-schedule-results", action="store_const", const="schedule", default=schedule_results_default,
                           metavar="SLICK_SCHEDULE_RESULTS", dest="slick_mode",
                           help="Schedule empty results in slick, but do not run the tests")
+        parser.add_option("--slick-schedule-add-requirement", action="store", default=env.get("SLICK_SCHEDULE_ADD_REQUIREMENT"),
+                          metavar="SLICK_SCHEDULE_ADD_REQUIREMENT", dest="requirement_add",
+                          help="Add a requirement to all results when scheduling.")
         parser.add_option("--slick-testrun-id", action="store", default=env.get('SLICK_TESTRUN_ID'),
                           metavar="SLICK_TESTRUN_ID", dest="slick_testrun_id",
                           help="Instead of creating a new testrun, use an existing one.")
@@ -294,6 +297,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.environment_name = options.slick_environment_name
         self.testrun_group = options.slick_testrun_group
         self.mode = options.slick_mode
+        self.requirement_add = options.requirement_add
         self.agent_name = options.slick_agent_name
         testrun = None
         if self.use_existing_testrun:
@@ -304,8 +308,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
             testrun = self.slick.testrun
             if self.mode == 'schedule':
-            	testrun.attributes = {'scheduled': 'true'}
-            	testrun.update()
+                testrun.attributes = {'scheduled': 'true'}
+                testrun.update()
         root_logger = logging.getLogger()
         self.loghandler = LogCapturingHandler()
         root_logger.addHandler(self.loghandler)
@@ -351,6 +355,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 slicktest.automationId = testdata.automationId
                 slicktest.automationTool = testdata.automationTool
                 result_attributes = {}
+                if self.mode == "schedule" and self.requirement_add is not None and self.requirement_add != "":
+                    result_attributes[self.requirement_add] = "required"
                 try:
                     actual_test_method = getattr(test.test, testmethod)
                     if hasattr(actual_test_method, REQUIRES_ATTRIBUTE):
