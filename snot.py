@@ -249,6 +249,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--slick-schedule-add-requirement", action="store", default=env.get("SLICK_SCHEDULE_ADD_REQUIREMENT"),
                           metavar="SLICK_SCHEDULE_ADD_REQUIREMENT", dest="requirement_add",
                           help="Add a requirement to all results when scheduling.")
+        parser.add_option("--slick-schedule-new-requires", action="store_true", dest="new_requires",
+                          help="apply the requires directly on the result as an attribute.")
         parser.add_option("--slick-testrun-id", action="store", default=env.get('SLICK_TESTRUN_ID'),
                           metavar="SLICK_TESTRUN_ID", dest="slick_testrun_id",
                           help="Instead of creating a new testrun, use an existing one.")
@@ -310,6 +312,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             if self.mode == 'schedule':
                 testrun.attributes = {'scheduled': 'true'}
                 testrun.update()
+        self.new_requires = options.new_requires
         root_logger = logging.getLogger()
         self.loghandler = LogCapturingHandler()
         root_logger.addHandler(self.loghandler)
@@ -355,12 +358,19 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 slicktest.automationId = testdata.automationId
                 slicktest.automationTool = testdata.automationTool
                 result_attributes = {}
+                requirements = None
                 if self.mode == "schedule" and self.requirement_add is not None and self.requirement_add != "":
                     result_attributes[self.requirement_add] = "required"
+                    if self.new_requires:
+                        requirements = [self.requirement_add]
                 try:
                     actual_test_method = getattr(test.test, testmethod)
                     if hasattr(actual_test_method, REQUIRES_ATTRIBUTE):
                         requires_value = getattr(actual_test_method, REQUIRES_ATTRIBUTE)
+                        if self.new_requires:
+                            if requirements is None:
+                                requirements = []
+                            requirements.extend(requires_value)
                         for requirement in requires_value:
                             result_attributes[requirement] = "required"
                 except:
@@ -401,7 +411,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 runstatus = RunStatus.TO_BE_RUN
                 if self.mode == 'schedule':
                     runstatus = RunStatus.SCHEDULED
-                self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes)
+                self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes, requires=requirements)
         if self.enabled and self.mode == 'schedule':
             sys.exit(0)
 
