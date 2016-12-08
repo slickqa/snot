@@ -1,8 +1,12 @@
 #!/usr/bin/env python
+from setuptools import setup, find_packages
 
 __author__ = 'Jason Corbett'
 
-from setuptools import setup, find_packages
+
+def get_requirements(filename):
+    with open(filename) as f:
+        return f.readlines()
 
 setup(
     name="slickqa-snot",
@@ -11,10 +15,10 @@ setup(
     license="License :: OSI Approved :: Apache Software License",
     long_description=open('README.txt').read(),
     py_modules=['snot'],
-    #packages=find_packages(exclude=['distribute_setup']),
-    #package_data={'': ['*.txt', '*.rst', '*.html']},
-    #include_package_data=True,
-    install_requires=['slickqa>=2.0.669', 'nose', 'docutils'],
+    # packages=find_packages(exclude=['distribute_setup']),
+    # package_data={'': ['*.txt', '*.rst', '*.html']},
+    # include_package_data=True,
+    install_requires=get_requirements('requirements.txt'),
     author="Slick Developers",
     url="http://github.com/slickqa/snot",
     entry_points={
