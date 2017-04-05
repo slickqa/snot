@@ -2,7 +2,7 @@ __author__ = 'jcorbett'
 
 import snot
 from asserts import *
-
+from slickqa import DocStringMetaData
 from nose.tools import istest
 from nose.plugins import Plugin
 
@@ -66,7 +66,7 @@ def test_parse_doc_string():
         :tags: tags test 1, tags test 2
         """
         pass
-    testdata = snot.DocStringMetaData(testfunc)
+    testdata = DocStringMetaData(testfunc)
     assert_equal(u"Long Title Test", testdata.name, "The name should be set to 'Long Title Test'")
     assert_equal(u"Purpose paragraph test 1\n\nPurpose paragraph test 2", testdata.purpose, "The purpose field should have both paragraphs")
     assert_equal(u"Component Test", testdata.component, "The component should be set to 'Component Test'")
@@ -98,7 +98,7 @@ def test_empty_docstring():
         pass
     e = None
     try:
-        snot.DocStringMetaData(testfunc)
+        DocStringMetaData(testfunc)
     except:
         e = sys.exc_info()
     assert_is_none(e, "No exception should be thrown during instantiation of DocStringMetaData on an undocumented method")
@@ -120,7 +120,7 @@ def test_name_conversion():
     """
     def test_function_name():
         pass
-    testdata = snot.DocStringMetaData(test_function_name)
+    testdata = DocStringMetaData(test_function_name)
     assert_equal("Function name", testdata.name, "When a function has no docstring the function name should be converted into a nice name.")
 
 @istest
@@ -140,7 +140,7 @@ def test_camel_case_name_conversion():
     """
     def testCamelCase():
         pass
-    testdata = snot.DocStringMetaData(testCamelCase)
+    testdata = DocStringMetaData(testCamelCase)
     assert_equal("Camel case", testdata.name, "When a function has no docstring the function name (in camel case) should be converted into a human friendly name.")
 
 @istest
@@ -164,7 +164,7 @@ def test_name_conversion_with_docstring():
         :component: Test Component
         """
         pass
-    testdata = snot.DocStringMetaData(testCamelCaseWithDocString)
+    testdata = DocStringMetaData(testCamelCaseWithDocString)
     assert_equal("Camel case with doc string", testdata.name)
     assert_equal("Purpose Test", testdata.purpose)
     assert_equal("Test Component", testdata.component)
@@ -186,7 +186,7 @@ def test_name_conversion_with_test_at_end():
 
     def this_is_a_simple_test():
         pass
-    testdata = snot.DocStringMetaData(this_is_a_simple_test)
+    testdata = DocStringMetaData(this_is_a_simple_test)
     assert_equal("This is a simple", testdata.name)
 
 
