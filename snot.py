@@ -246,7 +246,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--slick-schedule-results", action="store_const", const="schedule", default=schedule_results_default,
                           metavar="SLICK_SCHEDULE_RESULTS", dest="slick_mode",
                           help="Schedule empty results in slick, but do not run the tests")
-        parser.add_option("--slick-schedule-add-requirement", action="store", default=env.get("SLICK_SCHEDULE_ADD_REQUIREMENT"),
+        parser.add_option("--slick-schedule-add-requirement", action="append", default=[],
                           metavar="SLICK_SCHEDULE_ADD_REQUIREMENT", dest="requirement_add",
                           help="Add a requirement to all results when scheduling.")
         parser.add_option("--slick-schedule-new-requires", action="store_true", dest="new_requires",
@@ -359,10 +359,14 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 slicktest.automationTool = testdata.automationTool
                 result_attributes = {}
                 requirements = None
-                if self.mode == "schedule" and self.requirement_add is not None and self.requirement_add != "":
-                    result_attributes[self.requirement_add] = "required"
-                    if self.new_requires:
-                        requirements = [self.requirement_add]
+                if self.mode == "schedule" and self.requirement_add is not None and len(self.requirement_add) > 0:
+                    for requirement_add in self.requirement_add:
+                        result_attributes[requirement_add] = "required"
+                        if self.new_requires:
+                            if requirements is None:
+                                requirements = [requirement_add]
+                            else:
+                                requirements.append(requirement_add)
                 try:
                     actual_test_method = getattr(test.test, testmethod)
                     if hasattr(actual_test_method, REQUIRES_ATTRIBUTE):
