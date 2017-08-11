@@ -333,12 +333,17 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 if self.mode == 'schedule':
                     result_attributes['scheduled'] = "true"
                 try:
-                    for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
-                        if attribute is not None and hasattr(testdata, attribute) and getattr(testdata, attribute) is not None:
-                            data = getattr(testdata, attribute)
-                            if '{' in data and '}' in data and test.test.arg is not None and len(test.test.arg) > 0:
-                                data = data.format(*test.test.arg)
-                            setattr(slicktest, attribute, data)
+                    #for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
+                    #    if attribute is not None and hasattr(testdata, attribute) and getattr(testdata, attribute) is not None:
+                    #        data = getattr(testdata, attribute)
+                    #        if '{' in data and '}' in data and test.test.arg is not None and len(test.test.arg) > 0:
+                    #            data = data.format(*test.test.arg)
+                    #        setattr(slicktest, attribute, data)
+                    for attribute_name, attribute_value in testdata.__dict__.items():
+                        if attribute_name in slicktest._fields.keys():
+                            setattr(slicktest, attribute_name, attribute_value)
+                        elif attribute_name not in ('expectedResults', 'component', 'steps'):
+                            result_attributes[attribute_name] = str(attribute_value)
                     slicktest.project = self.slick.project.create_reference()
                     if hasattr(testdata, 'component'):
                         comp_name = testdata.component

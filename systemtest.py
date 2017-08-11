@@ -60,6 +60,7 @@ def test_stdout_logging_captured():
     :expectedResults:
         1. Nose Capture.txt has sample stdout message
         2. Nose Capture.txt has sample logging message
+    :ExtraAttribute: Something
     """
     print("A Stdout Message")
     log = logging.getLogger("systemtests.test_stdout_stderr_logging_captured")
@@ -232,7 +233,7 @@ def check_expected_equals_input(data, expected):
     This test takes an input data and compares it to expected.
 
     :component: NosePlugin
-    :author: Jason Corbett
+    :author: 11AF81C3-6439-4302-8942-D6CFDF57FE7D
 
     :steps:
         1. Compare the data against the expected
