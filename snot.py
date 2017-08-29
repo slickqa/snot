@@ -30,6 +30,7 @@ log = logging.getLogger('nose.plugins.snot')
 current_result = None
 testrun = None
 config = None
+on_file_result = None
 
 REQUIRES_ATTRIBUTE = 'slick_requires'
 
@@ -57,6 +58,28 @@ def add_file(path, fileobj=None):
     """
     if current_result is not None:
         current_result.add_file(path, fileobj)
+
+
+def add_link(name, url):
+    """
+    Add a link to the current result.
+    :param name: the name of the link, this is what get's displayed
+    :param url: the URL of the link for putting in an html a tag href attribute
+    :return: nothing
+    """
+    if current_result is not None:
+        current_result.add_link(name, url)
+
+
+def add_link_to_testrun(name, url):
+    """
+    Add a link to the current testrun.
+    :param name: the name of the link, this is what get's displayed
+    :param url: the URL of the link for putting in an html a tag href attribute
+    :return: nothing
+    """
+    if testrun is not None:
+        testrun.add_link(name, url)
 
 
 def add_file_to_testrun(path, fileobj=None):
@@ -421,6 +444,11 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             result.status = resultstatus
             result.finished = datetime.datetime.now()
             result.runlength = int((result.finished - result.started).total_seconds() * 1000)
+            if on_file_result is not None:
+                try:
+                    on_file_result(result)
+                except:
+                    log.error("Problem calling on_file_result:", exc_info=sys.exc_info())
             if err is not None:
                 # log capture and stderr/stdout capture are appended to the message.  We don't want those showing up
                 # in the reason
