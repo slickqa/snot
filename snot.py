@@ -363,7 +363,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     #            data = data.format(*test.test.arg)
                     #        setattr(slicktest, attribute, data)
                     for attribute_name, attribute_value in testdata.__dict__.items():
-                        if attribute_name in slicktest._fields.keys():
+                        if attribute_name == 'name':
+                            pass
+                        elif attribute_name in slicktest._fields.keys():
                             setattr(slicktest, attribute_name, attribute_value)
                         elif attribute_name not in ('expectedResults', 'component', 'steps'):
                             result_attributes[attribute_name] = str(attribute_value)
