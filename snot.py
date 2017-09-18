@@ -228,6 +228,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--slick-result-id", action="store", default=env.get('SLICK_RESULT_ID'),
                           metavar="SLICK_RESULT_ID", dest="slick_result_id",
                           help="Instead of creating a new result in the testrun, update an existing one.")
+        parser.add_option("--snot-no-log-capture", dest="snot_no_log_capture", default=env.get('SNOT_NO_LOG_CAPTURE'),
+                          metavar="SNOT_NO_LOG_CAPTURE", action="store_const", const=True,
+                          help="Don't capture the logs from the logging framework")
 
         # Make sure the log capture doesn't show slick related logging statements
         if 'NOSE_LOGFILTER' in env:
@@ -284,10 +287,11 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 testrun.attributes = {'scheduled': 'true'}
                 testrun.update()
         self.new_requires = options.new_requires
-        root_logger = logging.getLogger()
-        self.loghandler = LogCapturingHandler()
-        root_logger.addHandler(self.loghandler)
-        root_logger.setLevel(logging.DEBUG)
+        if not options.snot_no_log_capture:
+            root_logger = logging.getLogger()
+            self.loghandler = LogCapturingHandler()
+            root_logger.addHandler(self.loghandler)
+            root_logger.setLevel(logging.DEBUG)
 
     def prepareTest(self, testsuite):
         if not self.enabled:
