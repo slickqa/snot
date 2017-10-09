@@ -1,8 +1,10 @@
 import datetime
 import importlib
+import imp
 import itertools
 import logging
 import os
+import pickle
 import sys
 import time
 import traceback
@@ -28,6 +30,7 @@ __author__ = 'jcorbett'
 log = logging.getLogger('nose.plugins.snot')
 
 current_result = None
+""":type: Result"""
 testrun = None
 config = None
 on_file_result = None
@@ -119,17 +122,19 @@ def call_function(function_name):
         raise Exception("could not find " + function_name + " to run.")
 
 
-def get_tests(testsuite):
+def get_tests(testsuite, data_driven=False):
     tests = []
     for test in testsuite:
         if hasattr(test, '__iter__'):
             if hasattr(test, 'test_generator') and test.test_generator is not None:
                 test.test_generator, gen = itertools.tee(test.test_generator)
-                tests.extend(get_tests(test))
+                tests.extend(get_tests(test, data_driven=True))
                 test.test_generator = gen
             else:
                 tests.extend(get_tests(test))
         else:
+            if data_driven:
+                test.data_driven = True
             tests.append(test)
     return tests
 
@@ -373,6 +378,16 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                             setattr(slicktest, attribute_name, attribute_value)
                         elif attribute_name not in ('expectedResults', 'component', 'steps'):
                             result_attributes[attribute_name] = str(attribute_value)
+                    if hasattr(test, 'data_driven') and test.data_driven:
+                        method_file = sys.modules[getattr(test.test, testmethod).__module__].__file__
+                        if method_file.startswith(os.getcwd()):
+                            method_file = method_file[len(os.getcwd()) + 1:]
+                        if method_file.endswith('pyc'):
+                            method_file = method_file[:-1]
+                        result_attributes['snotDataDrivenFile'] = method_file
+                        result_attributes['snotDataDrivenFunctionName'] = getattr(test.test, testmethod).__name__
+                        result_attributes['snotDataDrivenArguments'] = pickle.dumps(test.test.arg)
+                        slicktest.automationKey = "snot:data_driven_proxy"
                     slicktest.project = self.slick.project.create_reference()
                     if hasattr(testdata, 'component'):
                         comp_name = testdata.component
@@ -512,13 +527,13 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         global testrun
         if not self.enabled or self.mode == 'schedule':
             return
-        elif self.use_existing_testrun:
-            testrun = self.slick.testruns(testrun.id).get()
-            if testrun.resultsByStatus.NO_RESULT == 0:
-                # finish testrun
-                testrun.runFinished = int(round(time.time() * 1000))
-                testrun.state = RunStatus.FINISHED
-                self.slick.testruns(testrun).update()
-        self.slick.finish_testrun()
+        #self.slick.finish_testrun()
 
 
+def data_driven_proxy():
+    """Data Driven Proxy Test"""
+    if current_result is None:
+        raise Exception("Must be using snot to run data driven proxy")
+    module_name = current_result.attributes["snotDataDrivenFile"].replace("/", ".")
+    test_module = imp.load_source(module_name, current_result.attributes["snotDataDrivenFile"])
+    return getattr(test_module, current_result.attributes["snotDataDrivenFunctionName"])(*pickle.loads(current_result.attributes["snotDataDrivenArguments"]))

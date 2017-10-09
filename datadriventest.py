@@ -1,6 +1,8 @@
-__author__ = 'jcorbett'
-
 from nose.tools import istest
+from nose.tools import assert_not_equal
+
+__author__ = 'Jason Corbett'
+
 
 @istest
 def test_data_driven():
@@ -12,6 +14,8 @@ def test_data_driven():
     for data in test_data:
         yield ddt, data[0], data[1]
 
+
 def ddt(test_name, argument):
     """Test: {0}"""
-    pass
+    assert_not_equal(test_name, argument, "The test name \"{}\" should not equal the argument \"{}\"".format(test_name,
+                                                                                                             argument))
