@@ -322,7 +322,10 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     # build key
                     address = list(test.address())
                     try:
-                        testfile = os.path.relpath(address[0])
+                        if not address[0].startswith("/"):
+                            testfile = os.path.relpath(address[0])
+                        else:
+                            testfile = address[0]
                         module_name = os.path.basename(address[0])[:-3]
                         if module_name == address[1]:
                             address.pop(1)
