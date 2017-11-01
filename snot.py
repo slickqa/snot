@@ -530,7 +530,16 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         global testrun
         if not self.enabled or self.mode == 'schedule':
             return
-        #self.slick.finish_testrun()
+        elif self.use_existing_testrun:
+            testrun = self.slick.testruns(self.testrun_id).get()
+            if testrun.summary.resultsByStatus.NO_RESULT == 0:
+                # finish testrun
+                testrun.runFinished = int(round(time.time() * 1000))
+                testrun.state = RunStatus.FINISHED
+                self.slick.testruns(testrun).update()
+        else:
+            self.slick.finish_testrun()
+        return None
 
 
 def data_driven_proxy():
