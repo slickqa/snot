@@ -122,23 +122,6 @@ def call_function(function_name):
         raise Exception("could not find " + function_name + " to run.")
 
 
-def get_tests(testsuite, data_driven=False):
-    tests = []
-    for test in testsuite:
-        if hasattr(test, '__iter__'):
-            if hasattr(test, 'test_generator') and test.test_generator is not None:
-                test.test_generator, gen = itertools.tee(test.test_generator)
-                tests.extend(get_tests(test, data_driven=True))
-                test.test_generator = gen
-            else:
-                tests.extend(get_tests(test))
-        else:
-            if data_driven:
-                test.data_driven = True
-            tests.append(test)
-    return tests
-
-
 class LogCapturingHandler(logging.Handler):
 
     ignore = ['nose', 'slick', 'requests']
@@ -183,6 +166,7 @@ class LogCapturingHandler(logging.Handler):
 class SlickAsSnotPlugin(nose.plugins.Plugin):
     name = "snot"
     score = 1800
+    testruns = dict()
 
     def options(self, parser, env=os.environ):
         super(SlickAsSnotPlugin, self).options(parser, env=env)
@@ -236,6 +220,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--snot-no-log-capture", dest="snot_no_log_capture", default=env.get('SNOT_NO_LOG_CAPTURE'),
                           metavar="SNOT_NO_LOG_CAPTURE", action="store_const", const=True,
                           help="Don't capture the logs from the logging framework")
+        parser.add_option("--slick-organize-by-tag", dest="slick_organize_by_tag", default=None,
+                          metavar="SLICK_ORGANIZE_BY_TAG", action="store",
+                          help="Organize testruns by provided tag's value")
 
         # Make sure the log capture doesn't show slick related logging statements
         if 'NOSE_LOGFILTER' in env:
@@ -245,18 +232,27 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
 
     def configure(self, options, conf):
         super(SlickAsSnotPlugin, self).configure(options, conf)
-        global config, testrun
         assert isinstance(conf, nose.config.Config)
+        self.options = options
+
+    def addSlickTestrun(self, testplan_name=None):
+        options = self.options
+        global config, testrun
         if options.files is not None and len(options.files) > 0:
             config = parse_config(options.files)
         if not self.enabled:
             return
+        self.testplan = options.slick_testplan
+        if testplan_name:
+            self.testplan = testplan_name
         self.use_existing_testrun = False
         if hasattr(options, 'slick_testrun_id') and hasattr(options, 'slick_result_id') and \
            options.slick_testrun_id is not None and options.slick_result_id is not None:
             self.use_existing_testrun = True
             self.testrun_id = options.slick_testrun_id
             self.result_id = options.slick_result_id
+        elif self.testplan and self.testplan in self.testruns:
+            self.testrun_id = self.testruns[self.testplan]
         else:
             for required in ['slick_url', 'slick_project_name']:
                 if (not hasattr(options, required)) or getattr(options, required) is None or getattr(options, required) == "":
@@ -273,7 +269,6 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 self.build = call_function(self.build_function)
             except:
                 log.warn("Problem occured calling build information from '%s': ", self.build_function, exc_info=sys.exc_info())
-        self.testplan = options.slick_testplan
         self.testrun_name = options.slick_testrun_name
         self.environment_name = options.slick_environment_name
         self.testrun_group = options.slick_testrun_group
@@ -281,13 +276,19 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.requirement_add = options.requirement_add
         self.agent_name = options.slick_agent_name
         testrun = None
-        if self.use_existing_testrun:
+        if self.testplan and self.testplan in self.testruns:
+            self.slick = self.testruns[self.testplan]
+            testrun = self.slick.testrun
+            make_testrun_updatable(testrun, self.slick)
+        elif self.use_existing_testrun:
             self.slick = SlickConnection(self.url)
             testrun = self.slick.testruns(options.slick_testrun_id).get()
             make_testrun_updatable(testrun, self.slick)
         else:
             self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
             testrun = self.slick.testrun
+            if hasattr(testrun, 'id') and self.slick.testrun.name not in self.testruns:
+                self.testruns[self.testplan] = self.slick
             if self.mode == 'schedule':
                 testrun.attributes = {'scheduled': 'true'}
                 testrun.update()
@@ -298,12 +299,40 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             root_logger.addHandler(self.loghandler)
             root_logger.setLevel(logging.DEBUG)
 
+    def get_tests(self, testsuite, data_driven=False):
+        tests = []
+        for test in testsuite:
+            if hasattr(test, '__iter__'):
+                if hasattr(test, 'test_generator') and test.test_generator is not None:
+                    test.test_generator, gen = itertools.tee(test.test_generator)
+                    tests.extend(self.get_tests(test, data_driven=True))
+                    test.test_generator = gen
+                else:
+                    tests.extend(self.get_tests(test))
+            else:
+                if data_driven:
+                    test.data_driven = True
+                if self.options.slick_organize_by_tag:
+                    method = getattr(testsuite.context, test.test._testMethodName)
+                    if hasattr(method, self.options.slick_organize_by_tag):
+                        test.tag = {}
+                        test.tag[self.options.slick_organize_by_tag] = getattr(method, self.options.slick_organize_by_tag)
+                tests.append(test)
+        return tests
+
     def prepareTest(self, testsuite):
         if not self.enabled:
             return
         self.results = dict()
-        for test in get_tests(testsuite):
+        for test in self.get_tests(testsuite):
             assert isinstance(test, nose.case.Test)
+            if self.options.slick_organize_by_tag:
+                if hasattr(test, 'tag') and self.options.slick_organize_by_tag in test.tag:
+                    self.addSlickTestrun(test.tag[self.options.slick_organize_by_tag])
+                else:
+                    pass
+            else:
+                self.addSlickTestrun()
             if self.use_existing_testrun:
                 result = self.slick.results(self.result_id).get()
                 make_result_updatable(result, self.slick)
