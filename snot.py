@@ -239,6 +239,11 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         if not self.enabled:
             return
         self.options = options
+        for required in ['slick_url', 'slick_project_name']:
+            if (not hasattr(options, required)) or getattr(options, required) is None or getattr(options, required) == "":
+                log.error("You can't use snot without specifying at least the slick url and the project name.")
+                self.enabled = False
+                return
 
     def addSlickTestrun(self, testplan_name=None):
         global config, testrun
@@ -254,12 +259,6 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             self.result_id = options.slick_result_id
         elif self.testplan and self.testplan in self.testruns:
             self.testrun_id = self.testruns[self.testplan]
-        else:
-            for required in ['slick_url', 'slick_project_name']:
-                if (not hasattr(options, required)) or getattr(options, required) is None or getattr(options, required) == "":
-                    log.error("You can't use snot without specifying at least the slick url and the project name.")
-                    self.enabled = False
-                    return
         self.url = options.slick_url
         self.project_name = options.slick_project_name
         self.release = options.slick_release
