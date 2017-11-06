@@ -233,15 +233,15 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
     def configure(self, options, conf):
         super(SlickAsSnotPlugin, self).configure(options, conf)
         assert isinstance(conf, nose.config.Config)
-        self.options = options
-
-    def addSlickTestrun(self, testplan_name=None):
-        options = self.options
         global config, testrun
         if options.files is not None and len(options.files) > 0:
             config = parse_config(options.files)
         if not self.enabled:
             return
+        self.options = options
+
+    def addSlickTestrun(self, testplan_name=None):
+        options = self.options
         self.testplan = options.slick_testplan
         if testplan_name:
             self.testplan = testplan_name
