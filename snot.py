@@ -220,9 +220,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--snot-no-log-capture", dest="snot_no_log_capture", default=env.get('SNOT_NO_LOG_CAPTURE'),
                           metavar="SNOT_NO_LOG_CAPTURE", action="store_const", const=True,
                           help="Don't capture the logs from the logging framework")
-        parser.add_option("--slick-organize-by-tag", dest="slick_organize_by_tag", default=None,
-                          metavar="SLICK_ORGANIZE_BY_TAG", action="store",
-                          help="Organize testruns by provided tag's value")
+        parser.add_option("--slick-organize-by-tag", action="append", default=None,
+                          help='A space delimited list of tag keys to base test run names after. Will be " - " delimited.')
 
         # Make sure the log capture doesn't show slick related logging statements
         if 'NOSE_LOGFILTER' in env:
@@ -317,9 +316,11 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     test.data_driven = True
                 if self.options.slick_organize_by_tag:
                     method = getattr(testsuite.context, test.test._testMethodName)
-                    if hasattr(method, self.options.slick_organize_by_tag):
+                    if isinstance(self.options.slick_organize_by_tag, list):
                         test.tag = {}
-                        test.tag[self.options.slick_organize_by_tag] = getattr(method, self.options.slick_organize_by_tag)
+                        for tag in self.options.slick_organize_by_tag:
+                            if hasattr(method, tag):
+                                test.tag[tag] = getattr(method, tag)
                 tests.append(test)
         return tests
 
@@ -330,8 +331,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         for test in self.get_tests(testsuite):
             assert isinstance(test, nose.case.Test)
             if self.options.slick_organize_by_tag:
-                if hasattr(test, 'tag') and self.options.slick_organize_by_tag in test.tag:
-                    self.addSlickTestrun(test.tag[self.options.slick_organize_by_tag])
+                if hasattr(test, 'tag'):
+                    self.addSlickTestrun(' - '.join(test.tag.values()))
                 else:
                     pass
             else:
