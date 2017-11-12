@@ -334,7 +334,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 if hasattr(test, 'tag'):
                     self.addSlickTestrun(' - '.join(test.tag.values()))
                 else:
-                    pass
+                    continue
             else:
                 self.addSlickTestrun()
             if self.use_existing_testrun:
