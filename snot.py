@@ -295,11 +295,6 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 testrun.attributes = {'scheduled': 'true'}
                 testrun.update()
         self.new_requires = options.new_requires
-        if not options.snot_no_log_capture:
-            root_logger = logging.getLogger()
-            self.loghandler = LogCapturingHandler()
-            root_logger.addHandler(self.loghandler)
-            root_logger.setLevel(logging.DEBUG)
 
     def get_tests(self, testsuite, data_driven=False):
         tests = []
@@ -481,12 +476,32 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             result.update()
             global current_result
             current_result = result
+            if not self.options.snot_no_log_capture:
+                rootLogger = logging.getLogger()
+                if hasattr(self, 'loghandler') and self.loghandler is not None:
+                    rootLogger.removeHandler(self.loghandler)
+                self.loghandler = logging.FileHandler("/tmp/{}-testcase.log".format(result.id))
+                rootLogger.setLevel(logging.DEBUG)
+                self.loghandler.setFormatter(logging.Formatter("[%(asctime)s | %(levelname) 8s | %(name)s ]: %(message)s"))
+                rootLogger.addHandler(self.loghandler)
 
     def afterTest(self, test):
         """Clear capture buffer.
         """
+        if not self.enabled:
+            return
         if hasattr(sys.stdout, '__class__') and hasattr(sys.stdout.__class__, '__name__') and sys.stdout.__class__.__name__ == 'StringIO':
             add_file("Nose Capture.txt", sys.stdout)
+        if hasattr(self, 'loghandler') and self.loghandler is not None:
+            log_filename = self.loghandler.baseFilename
+            rootLogger = logging.getLogger()
+            rootLogger.removeHandler(self.loghandler)
+            self.loghandler.close()
+            self.loghandler = None
+            if os.stat(log_filename).st_size > 0:
+                with open(log_filename, "r") as log_file:
+                    add_file("testcase.log", log_file)
+            os.unlink(log_filename)
 
     def addSlickResult(self, test, resultstatus=ResultStatus.PASS, err=None):
         if not self.enabled:
