@@ -42,6 +42,10 @@ class PassedOnRetry(Exception):
     pass
 
 
+class Requirements(list):
+    pass
+
+
 def requires(*args):
     def _wrap_with_requires(f):
         if hasattr(f, REQUIRES_ATTRIBUTE):
@@ -419,6 +423,10 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                         result_attributes['snotDataDrivenFile'] = method_file
                         result_attributes['snotDataDrivenFunctionName'] = getattr(test.test, testmethod).__name__
                         result_attributes['snotDataDrivenArguments'] = pickle.dumps(test.test.arg)
+                        if len(test.test.arg) > 0 and isinstance(test.test.arg[-1], Requirements):
+                            if requirements is None:
+                                requirements = []
+                            requirements.extend(test.test.arg[-1])
                         if hasattr(getattr(test.test, testmethod), 'im_self'):
                             result_attributes['snotDataDrivenInstance'] = pickle.dumps(getattr(getattr(test.test, testmethod), 'im_self'))
                         slicktest.automationKey = "snot:data_driven_proxy"
