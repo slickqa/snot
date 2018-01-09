@@ -415,9 +415,12 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                             method_file = method_file[len(os.getcwd()) + 1:]
                         if method_file.endswith('pyc'):
                             method_file = method_file[:-1]
+                        result_attributes['snotDataDrivenModuleName'] = getattr(test.test, testmethod).__module__
                         result_attributes['snotDataDrivenFile'] = method_file
                         result_attributes['snotDataDrivenFunctionName'] = getattr(test.test, testmethod).__name__
                         result_attributes['snotDataDrivenArguments'] = pickle.dumps(test.test.arg)
+                        if hasattr(getattr(test.test, testmethod), 'im_self'):
+                            result_attributes['snotDataDrivenInstance'] = pickle.dumps(getattr(getattr(test.test, testmethod), 'im_self'))
                         slicktest.automationKey = "snot:data_driven_proxy"
                     slicktest.project = self.slick.project.create_reference()
                     if hasattr(testdata, 'component'):
@@ -595,5 +598,10 @@ def data_driven_proxy():
     if current_result is None:
         raise Exception("Must be using snot to run data driven proxy")
     module_name = current_result.attributes["snotDataDrivenFile"].replace("/", ".")
+    if "snotDataDrivenModuleName" in current_result.attributes:
+        module_name = current_result.attributes["snotDataDrivenModuleName"]
     test_module = imp.load_source(module_name, current_result.attributes["snotDataDrivenFile"])
-    return getattr(test_module, current_result.attributes["snotDataDrivenFunctionName"])(*pickle.loads(current_result.attributes["snotDataDrivenArguments"]))
+    parent = test_module
+    if 'snotDataDrivenInstance' in current_result.attributes:
+        parent = pickle.loads(current_result.attributes['snotDataDrivenInstance'])
+    return getattr(parent, current_result.attributes["snotDataDrivenFunctionName"])(*pickle.loads(current_result.attributes["snotDataDrivenArguments"]))
