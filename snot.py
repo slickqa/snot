@@ -652,10 +652,8 @@ def data_driven_proxy_setup():
     if hasattr(test, 'setup'):
         setup_test = getattr(test, 'setup')
     setups = [setup_module, setup_class, setup_test]
-    print "Proxy Setup", repr(setups)
     for setup in setups:
         if setup is not None and hasattr(setup, '__call__'):
-            print "Calling ", repr(setup)
             setup()
 
 
