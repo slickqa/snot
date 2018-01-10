@@ -1,6 +1,7 @@
 import datetime
 import importlib
 import imp
+import inspect
 import itertools
 import logging
 import os
@@ -8,6 +9,7 @@ import pickle
 import sys
 import time
 import traceback
+import types
 from unittest import SkipTest
 
 import nose
@@ -601,10 +603,16 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         return None
 
 
-def data_driven_proxy():
-    """Data Driven Proxy Test"""
+data_driven_parent = None
+data_driven_test = None
+
+
+def get_data_driven_proxy_test_objects():
+    global data_driven_parent, data_driven_test
     if current_result is None:
         raise Exception("Must be using snot to run data driven proxy")
+    if data_driven_parent is not None:
+        return data_driven_parent, data_driven_test
     module_name = current_result.attributes["snotDataDrivenFile"].replace("/", ".")
     if "snotDataDrivenModuleName" in current_result.attributes:
         module_name = current_result.attributes["snotDataDrivenModuleName"]
@@ -612,4 +620,79 @@ def data_driven_proxy():
     parent = test_module
     if 'snotDataDrivenInstance' in current_result.attributes:
         parent = pickle.loads(current_result.attributes['snotDataDrivenInstance'])
-    return getattr(parent, current_result.attributes["snotDataDrivenFunctionName"])(*pickle.loads(current_result.attributes["snotDataDrivenArguments"]))
+    data_driven_parent = parent
+    data_driven_test = getattr(parent, current_result.attributes["snotDataDrivenFunctionName"])
+    return data_driven_parent, data_driven_test
+
+
+def data_driven_proxy_setup():
+    parent, test = get_data_driven_proxy_test_objects()
+    setup_module = None
+    setup_class = None
+    setup_test = None
+    if 'snotDataDrivenInstance' in current_result.attributes:
+        # check for setupClass and setup
+        for member_name, item in inspect.getmembers(parent):
+            lower_case_name = member_name.lower()
+            if lower_case_name == 'setupclass' or lower_case_name == 'setup_class':
+                setup_class = item
+            if lower_case_name == 'setup':
+                setup_test = item
+        # also check the module for setup_module
+        for member_name, item in inspect.getmembers(inspect.getmodule(parent)):
+            lower_case_name = member_name.lower()
+            if lower_case_name == 'setup_module' or lower_case_name == 'setupmodule':
+                setup_module = item
+    if inspect.ismodule(parent):
+        # check for setup_module
+        for member_name, item in inspect.getmembers(parent):
+            lower_case_name = member_name.lower()
+            if lower_case_name == 'setup_module' or lower_case_name == 'setupmodule':
+                setup_module = item
+    if hasattr(test, 'setup'):
+        setup_test = getattr(test, 'setup')
+    setups = [setup_module, setup_class, setup_test]
+    print "Proxy Setup", repr(setups)
+    for setup in setups:
+        if setup is not None and hasattr(setup, '__call__'):
+            print "Calling ", repr(setup)
+            setup()
+
+
+def data_driven_proxy_teardown():
+    parent, test = get_data_driven_proxy_test_objects()
+    teardown_module = None
+    teardown_class = None
+    teardown_test = None
+    if 'snotDataDrivenInstance' in current_result.attributes:
+        # check for teardownClass and teardown
+        for member_name, item in inspect.getmembers(parent):
+            lower_case_name = member_name.lower()
+            if lower_case_name == 'teardownclass' or lower_case_name == 'teardown_class':
+                teardown_class = item
+            if lower_case_name == 'teardown':
+                teardown_test = item
+        # also check the module for teardown_module
+        for member_name, item in inspect.getmembers(inspect.getmodule(parent)):
+            lower_case_name = member_name.lower()
+            if lower_case_name == 'teardown_module' or lower_case_name == 'teardownmodule':
+                teardown_module = item
+    if inspect.ismodule(parent):
+        # check for teardown_module
+        for member_name, item in inspect.getmembers(parent):
+            lower_case_name = member_name.lower()
+            if lower_case_name == 'teardown_module' or lower_case_name == 'teardownmodule':
+                teardown_module = item
+    if hasattr(test, 'teardown'):
+        teardown_test = getattr(test, 'teardown')
+    teardowns = [teardown_module, teardown_class, teardown_test]
+    for teardown in teardowns:
+        if teardown is not None and hasattr(teardown, '__call__'):
+            teardown()
+
+
+@nose.with_setup(data_driven_proxy_setup, data_driven_proxy_teardown)
+def data_driven_proxy():
+    """Data Driven Proxy Test"""
+    parent, test = get_data_driven_proxy_test_objects()
+    return test(*pickle.loads(current_result.attributes["snotDataDrivenArguments"]))
