@@ -526,7 +526,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             result = self.results[test.id()]
             assert isinstance(result, Result)
             result.runstatus = RunStatus.FINISHED
-            if resultstatus == ResultStatus.PASS and hasattr(result.attributes, 'retry_count'):
+            if resultstatus == ResultStatus.PASS and 'retry_count' in result.attributes:
                 resultstatus = ResultStatus.PASSED_ON_RETRY
             result.status = resultstatus
             result.finished = datetime.datetime.now()
