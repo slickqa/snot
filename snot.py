@@ -421,10 +421,11 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                             method_file = method_file[len(os.getcwd()) + 1:]
                         if method_file.endswith('pyc'):
                             method_file = method_file[:-1]
-                        result_attributes['snotDataDrivenModuleName'] = getattr(test.test, testmethod).__module__
-                        result_attributes['snotDataDrivenFile'] = method_file
-                        result_attributes['snotDataDrivenFunctionName'] = getattr(test.test, testmethod).__name__
-                        result_attributes['snotDataDrivenArguments'] = pickle.dumps(test.test.arg)
+                        if self.mode == "scheduled":
+                            result_attributes['snotDataDrivenModuleName'] = getattr(test.test, testmethod).__module__
+                            result_attributes['snotDataDrivenFile'] = method_file
+                            result_attributes['snotDataDrivenFunctionName'] = getattr(test.test, testmethod).__name__
+                            result_attributes['snotDataDrivenArguments'] = pickle.dumps(test.test.arg)
                         if len(test.test.arg) > 0 and isinstance(test.test.arg[-1], Requirements):
                             if requirements is None:
                                 requirements = []
