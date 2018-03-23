@@ -421,7 +421,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                             method_file = method_file[len(os.getcwd()) + 1:]
                         if method_file.endswith('pyc'):
                             method_file = method_file[:-1]
-                        if self.mode == "scheduled":
+                        if self.mode == "schedule":
                             result_attributes['snotDataDrivenModuleName'] = getattr(test.test, testmethod).__module__
                             result_attributes['snotDataDrivenFile'] = method_file
                             result_attributes['snotDataDrivenFunctionName'] = getattr(test.test, testmethod).__name__
