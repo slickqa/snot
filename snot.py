@@ -411,6 +411,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     for attribute_name, attribute_value in testdata.__dict__.items():
                         if attribute_name == 'name':
                             pass
+                        elif attribute_name == 'automationId' and attribute_value == 'nose.failure.Failure.runTest':
+                            setattr(slicktest, 'name', "{}: {} ({})".format(type(test.test).__name__, type(test.test.exc_val).__name__, test.test.exc_val.message))
                         elif attribute_name in slicktest._fields.keys():
                             setattr(slicktest, attribute_name, attribute_value)
                         elif attribute_name not in ('expectedResults', 'component', 'steps'):
