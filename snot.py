@@ -36,6 +36,7 @@ current_result = None
 testrun = None
 config = None
 on_file_result = None
+snot_options = None
 
 REQUIRES_ATTRIBUTE = 'slick_requires'
 
@@ -239,6 +240,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         super(SlickAsSnotPlugin, self).configure(options, conf)
         assert isinstance(conf, nose.config.Config)
         global config
+        global snot_options
+        snot_options = options
         if options.files is not None and len(options.files) > 0:
             config = parse_config(options.files)
         if not self.enabled:
@@ -394,8 +397,12 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                         if self.new_requires:
                             if requirements is None:
                                 requirements = []
-                            requirements.extend(requires_value)
-                        for requirement in requires_value:
+                            for i in requires_value:
+                                if not isinstance(i, basestring):
+                                    requirements.extend(i)
+                                else:
+                                    requirements.append(i)
+                        for requirement in set(requirements):
                             result_attributes[requirement] = "required"
                 except:
                     log.error("Error occurred while trying to build attributes.", exc_info=sys.exc_info)
@@ -428,7 +435,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                             result_attributes['snotDataDrivenFile'] = method_file
                             result_attributes['snotDataDrivenFunctionName'] = getattr(test.test, testmethod).__name__
                             result_attributes['snotDataDrivenArguments'] = pickle.dumps(test.test.arg)
-                        if len(test.test.arg) > 0 and isinstance(test.test.arg[-1], Requirements):
+                        if hasattr(test.test, 'arg') and len(test.test.arg) > 0 and isinstance(test.test.arg[-1], Requirements):
                             if requirements is None:
                                 requirements = []
                             requirements.extend(test.test.arg[-1])
@@ -449,12 +456,12 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                         for step in testdata.steps:
                             slickstep = Step()
                             slickstep.name = step
-                            if step is not None and '{' in step and '}' in step and test.test.arg is not None and len(test.test.arg) > 0:
+                            if step is not None and '{' in step and '}' in step and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
                                 slickstep.name = step.format(*test.test.arg)
                             if hasattr(testdata, 'expectedResults') and len(testdata.expectedResults) > len(slicktest.steps):
                                 expectedResult = testdata.expectedResults[len(slicktest.steps)]
                                 slickstep.expectedResult = expectedResult
-                                if expectedResult is not None and '{' in expectedResult and '}' in expectedResult and test.test.arg is not None and len(test.test.arg) > 0:
+                                if expectedResult is not None and '{' in expectedResult and '}' in expectedResult and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
                                     slickstep.expectedResult = expectedResult.format(*test.test.arg)
                             slicktest.steps.append(slickstep)
                 except:
