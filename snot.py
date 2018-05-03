@@ -471,7 +471,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     runstatus = RunStatus.SCHEDULED
                 if requirements is not None:
                     requirements.sort()
-                self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes, requires=list(set(requirements)))
+                self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes, requires=requirements)
         if self.enabled and self.mode == 'schedule':
             sys.exit(0)
 
