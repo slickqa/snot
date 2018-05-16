@@ -428,8 +428,6 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                         method_file = sys.modules[getattr(test.test, testmethod).__module__].__file__
                         if method_file.startswith(os.getcwd()):
                             method_file = method_file[len(os.getcwd()) + 1:]
-                        else:
-                            method_file = "{}/{}".format(os.getcwd(), method_file)
                         if method_file.endswith('pyc'):
                             method_file = method_file[:-1]
                         if self.mode == "schedule":
