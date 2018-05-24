@@ -426,8 +426,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                             result_attributes[attribute_name] = str(attribute_value)
                     if hasattr(test, 'data_driven') and test.data_driven:
                         method_file = getattr(test.test, 'context').__file__
-                        if method_file.startswith(os.getcwd()):
-                            method_file = method_file[len(os.getcwd()) + 1:]
+                        # Don't remove cwd because we need that
+                        # if method_file.startswith(os.getcwd()):
+                        #     method_file = method_file[len(os.getcwd()) + 1:]
                         if method_file.endswith('pyc'):
                             method_file = method_file[:-1]
                         if self.mode == "schedule":
