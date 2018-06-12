@@ -44,6 +44,8 @@ REQUIRES_ATTRIBUTE = 'slick_requires'
 class PassedOnRetry(Exception):
     pass
 
+class NotTested(Exception):
+    pass
 
 class Requirements(list):
     pass
@@ -587,6 +589,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             return
         if err[0] is SkipTest:
             self.addSlickResult(test, ResultStatus.SKIPPED, err)
+        elif err[0] is NotTested:
+            self.addSlickResult(test, ResultStatus.NOT_TESTED, err)
         elif err[0] is PassedOnRetry:
             self.addSlickResult(test, ResultStatus.PASSED_ON_RETRY, err)
         else:
