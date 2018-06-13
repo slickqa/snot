@@ -467,6 +467,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                                 if expectedResult is not None and '{' in expectedResult and '}' in expectedResult and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
                                     slickstep.expectedResult = expectedResult.format(*test.test.arg)
                             slicktest.steps.append(slickstep)
+                    if not hasattr(testdata, 'tags') and requirements:
+                        slicktest.tags = list(set(requirements))
                 except:
                     log.error("Error occured when parsing for test {}:".format(test.id()), exc_info=sys.exc_info())
                 runstatus = RunStatus.TO_BE_RUN
