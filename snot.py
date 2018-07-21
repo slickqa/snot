@@ -106,6 +106,28 @@ def add_file_to_testrun(path, fileobj=None):
         testrun.add_file(path, fileobj)
 
 
+def add_graph(graph):
+    """
+    Add a graph attribute to slick result
+    :param graph: {'columns': [{'type': str, 'name': str}], 'values': [{'date': date_in_millis, 'measurements': [1, 2, 3, 4]}]}
+    :return: Nothing
+    """
+    if current_result is not None:
+        current_result.attributes['graph'] = graph
+        current_result.update()
+
+
+def write_to_graph(value):
+    """
+    Append value to graph object
+    :param value: {'date': date_in_millis, 'measurements':[1, 2, 3, 4]}
+    :return: Nothing
+    """
+    if current_result is not None and 'graph' in current_result.attributes:
+        current_result.attributes['graph']['values'].append(value)
+        current_result.update()
+
+
 def parse_config(files):
     parser = SafeConfigParser()
     parser.read(files)
