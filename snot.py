@@ -112,8 +112,8 @@ def add_graph(graph):
     :param graph: {'columns': [{'type': str, 'name': str}], 'values': [{'date': date_in_millis, 'measurements': [1, 2, 3, 4]}]}
     :return: Nothing
     """
-    if current_result is not None:
-        current_result.attributes['graph'] = graph
+    if current_result is not None and hasattr(current_result, 'graph'):
+        current_result.graph = graph
         current_result.update()
 
 
@@ -123,8 +123,8 @@ def write_to_graph(value):
     :param value: {'date': date_in_millis, 'measurements':[1, 2, 3, 4]}
     :return: Nothing
     """
-    if current_result is not None and 'graph' in current_result.attributes:
-        current_result.attributes['graph']['values'].append(value)
+    if current_result is not None and hasattr(current_result, 'graph') and current_result.graph:
+        current_result.graph['values'].append(value)
         current_result.update()
 
 
