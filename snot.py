@@ -123,9 +123,15 @@ def write_to_graph(value):
     :param value: {'date': date_in_millis, 'measurements':[1, 2, 3, 4]}
     :return: Nothing
     """
-    if current_result is not None and hasattr(current_result, 'graph') and current_result.graph:
-        current_result.graph['values'].append(value)
-        current_result.update()
+    try:
+        if current_result is not None:
+            if isinstance(value, (list, tuple)):
+                current_result.graph.values.extend(value)
+            else:
+                current_result.graph.values.append(value)
+            current_result.update()
+    except:
+        log.warn("Error while trying to write to graph. Catching. Don't care.")
 
 
 def parse_config(files):
