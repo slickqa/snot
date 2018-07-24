@@ -18,7 +18,7 @@ import nose.config
 import nose.plugins
 
 from slickqa import SlickQA, Testcase, ResultStatus, RunStatus, Step, Result, make_result_updatable, \
-    make_testrun_updatable, DocStringMetaData
+    make_testrun_updatable, DocStringMetaData, GraphValueReference
 from slickqa.connection import SlickConnection
 
 try:
@@ -126,9 +126,9 @@ def write_to_graph(value):
     try:
         if current_result is not None:
             if isinstance(value, (list, tuple)):
-                current_result.graph.values.extend(value)
+                current_result.graph.values.extend([GraphValueReference.from_dict(v) for v in value])
             else:
-                current_result.graph.values.append(value)
+                current_result.graph.values.append(GraphValueReference.from_dict(value))
             current_result.update()
     except:
         log.warn("Error while trying to write to graph. Catching. Don't care.")
