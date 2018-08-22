@@ -455,7 +455,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                         elif attribute_name not in ('expectedResults', 'component', 'steps'):
                             result_attributes[attribute_name] = str(attribute_value)
                     if hasattr(test, 'data_driven') and test.data_driven:
-                        method_file = getattr(test.test, 'context').__file__
+                        method_file = sys.modules[getattr(test.test, testmethod).__module__].__file__
                         # Don't remove cwd because we need that
                         # if method_file.startswith(os.getcwd()):
                         #     method_file = method_file[len(os.getcwd()) + 1:]
