@@ -246,6 +246,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--slick-schedule-add-requirement", action="append", default=[],
                           metavar="SLICK_SCHEDULE_ADD_REQUIREMENT", dest="requirement_add",
                           help="Add a requirement to all results when scheduling.")
+        parser.add_option("--slick-schedule-add-attribute", action="append", default=[],
+                          metavar="SLICK_SCHEDULE_ADD_ATTRIBUTE", dest="attribute_add",
+                          help="Add an attribute to all results when scheduling.")
         parser.add_option("--slick-schedule-new-requires", action="store_true", dest="new_requires",
                           help="apply the requires directly on the result as an attribute.")
         parser.add_option("--slick-testrun-id", action="store", default=env.get('SLICK_TESTRUN_ID'),
@@ -315,6 +318,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.testrun_group = options.slick_testrun_group
         self.mode = options.slick_mode
         self.requirement_add = options.requirement_add
+        self.attribute_add = options.attribute_add
         self.agent_name = options.slick_agent_name
         testrun = None
         if self.testplan and self.testplan in self.testruns:
@@ -420,6 +424,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                                 requirements = [requirement_add]
                             else:
                                 requirements.append(requirement_add)
+                if self.mode == "schedule" and self.attribute_add is not None and len(self.attribute_add) > 0:
+                    for attribute_add in self.attribute_add:
+                        result_attributes[attribute_add] = True
                 try:
                     actual_test_method = getattr(test.test, testmethod)
                     if hasattr(actual_test_method, REQUIRES_ATTRIBUTE):
