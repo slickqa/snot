@@ -426,7 +426,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                                 requirements.append(requirement_add)
                 if self.mode == "schedule" and self.attribute_add is not None and len(self.attribute_add) > 0:
                     for attribute_add in self.attribute_add:
-                        result_attributes[attribute_add] = True
+                        result_attributes[attribute_add] = 'true'
                 try:
                     actual_test_method = getattr(test.test, testmethod)
                     if hasattr(actual_test_method, REQUIRES_ATTRIBUTE):
