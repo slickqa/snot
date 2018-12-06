@@ -572,41 +572,43 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         if self.mode == 'schedule':
             sys.exit(0)
             return
-        if test.id() in self.results:
-            result = self.results[test.id()]
-            assert isinstance(result, Result)
-            result.runstatus = RunStatus.FINISHED
-            if resultstatus == ResultStatus.PASS and 'retry_count' in result.attributes:
-                resultstatus = ResultStatus.PASSED_ON_RETRY
-            result.status = resultstatus
-            result.finished = datetime.datetime.now()
-            result.runlength = int((result.finished - result.started).total_seconds() * 1000)
-            if on_file_result is not None:
-                try:
-                    on_file_result(result)
-                except:
-                    log.error("Problem calling on_file_result:", exc_info=sys.exc_info())
-            if err is not None:
-                # log capture and stderr/stdout capture are appended to the message.  We don't want those showing up
-                # in the reason
-                reason_lines = None
-                if sys.version_info[0] == 2:
-                    reason_lines = traceback.format_exception(*err)
-                else:
-                    reason_lines = traceback.format_exception(*err, chain=not isinstance(err[1], str))
-                message_parts = reason_lines[-1].split('\n')
-                reason_lines[-1] = message_parts[0]
-                capture = None
-                if len(message_parts) > 2:
-                    capture = '\n'.join(message_parts[1:])
-                    reason_lines.reverse()
-                result.reason = '\n'.join(reason_lines)
+        for result_id in self.results:
+            if test.id() == result_id or (len(test.config.testNames) == 1 and result_id.split(".")[-1] == test.config.testNames[0].split(".")[-1]):
+                result = self.results[result_id]
+                assert isinstance(result, Result)
+                result.runstatus = RunStatus.FINISHED
+                if resultstatus == ResultStatus.PASS and 'retry_count' in result.attributes:
+                    resultstatus = ResultStatus.PASSED_ON_RETRY
+                result.status = resultstatus
+                result.finished = datetime.datetime.now()
+                result.runlength = int((result.finished - result.started).total_seconds() * 1000)
+                if on_file_result is not None:
+                    try:
+                        on_file_result(result)
+                    except:
+                        log.error("Problem calling on_file_result:", exc_info=sys.exc_info())
+                if err is not None:
+                    # log capture and stderr/stdout capture are appended to the message.  We don't want those showing up
+                    # in the reason
+                    reason_lines = None
+                    if sys.version_info[0] == 2:
+                        reason_lines = traceback.format_exception(*err)
+                    else:
+                        reason_lines = traceback.format_exception(*err, chain=not isinstance(err[1], str))
+                    message_parts = reason_lines[-1].split('\n')
+                    reason_lines[-1] = message_parts[0]
+                    capture = None
+                    if len(message_parts) > 2:
+                        capture = '\n'.join(message_parts[1:])
+                        reason_lines.reverse()
+                    result.reason = '\n'.join(reason_lines)
 
-            if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
-                del result.config
-            if hasattr(result, 'component') and not hasattr(result.component, 'id'):
-                del result.component
-            result.update()
+                if hasattr(result, 'config') and not hasattr(result.config, 'configId'):
+                    del result.config
+                if hasattr(result, 'component') and not hasattr(result.component, 'id'):
+                    del result.component
+                result.update()
+                break
         else:
             log.error("Unrecognized test %s", test.id())
 
