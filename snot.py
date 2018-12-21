@@ -28,13 +28,13 @@ except:
 
 __author__ = 'jcorbett'
 
-
 log = logging.getLogger('nose.plugins.snot')
 
 current_result = None
 """:type: Result"""
 testrun = None
 config = None
+logs = []
 on_file_result = None
 snot_options = None
 
@@ -626,6 +626,10 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         if self.mode == 'schedule':
             sys.exit(0)
             return
+        if logs:
+            for log_file in logs:
+                if "name" in log_file and "file" in log_file:
+                    add_file(log_file['name'], log_file['file'])
         if err[0] is SkipTest:
             self.addSlickResult(test, ResultStatus.SKIPPED, err)
         elif err[0] is NotTested:
@@ -641,6 +645,10 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         if self.mode == 'schedule':
             sys.exit(0)
             return
+        if logs:
+            for log_file in logs:
+                if "name" in log_file and "file" in log_file:
+                    add_file(log_file['name'], log_file['file'])
         self.addSlickResult(test, ResultStatus.FAIL, err)
 
     def finalize(self, result):
