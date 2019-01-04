@@ -9,7 +9,7 @@ def get_requirements(filename):
         return f.readlines()
 
 setup(
-    name="vivint-slickqa-snot",
+    name="slickqa-snot",
     description="A plugin to nose to allow results from python tests to be put into slick.",
     version="1.0" + open("build.txt").read().strip(),
     license="License :: OSI Approved :: Apache Software License",
