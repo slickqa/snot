@@ -3,3 +3,5 @@ slickqa>=2.0.679
 nose
 docutils
 decorator
+requests
+packaging
