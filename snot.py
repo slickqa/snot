@@ -37,6 +37,7 @@ config = None
 logs = []
 on_file_result = None
 snot_options = None
+test_failed = False
 
 REQUIRES_ATTRIBUTE = 'slick_requires'
 
@@ -522,6 +523,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             raise SkipTest()
 
     def startTest(self, test):
+        global test_failed
+        test_failed = False
         if not self.enabled:
             return
         if test.id() in self.results:
@@ -621,15 +624,13 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.addSlickResult(test)
 
     def addError(self, test, err):
+        global test_failed
         if not self.enabled:
             return
         if self.mode == 'schedule':
             sys.exit(0)
             return
-        if logs:
-            for log_file in logs:
-                if "name" in log_file and "file" in log_file:
-                    add_file(log_file['name'], log_file['file'])
+        test_failed = True
         if err[0] is SkipTest:
             self.addSlickResult(test, ResultStatus.SKIPPED, err)
         elif err[0] is NotTested:
@@ -640,15 +641,13 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             self.addSlickResult(test, ResultStatus.BROKEN_TEST, err)
 
     def addFailure(self, test, err):
+        global test_failed
         if not self.enabled:
             return
         if self.mode == 'schedule':
             sys.exit(0)
             return
-        if logs:
-            for log_file in logs:
-                if "name" in log_file and "file" in log_file:
-                    add_file(log_file['name'], log_file['file'])
+        test_failed = True
         self.addSlickResult(test, ResultStatus.FAIL, err)
 
     def finalize(self, result):
