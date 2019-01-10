@@ -15,28 +15,10 @@ def get_requirements(filename):
     with open(filename) as f:
         return f.readlines()
 
-
-URL_PATTERN = 'https://pypi.python.org/pypi/{package}/json'
-
-
-def get_version_and_bump(package, url_pattern=URL_PATTERN):
-    """Return version of package on pypi.python.org using json."""
-    req = requests.get(url_pattern.format(package=package))
-    version = parse('0')
-    if req.status_code == requests.codes.ok:
-        j = req.json()
-        releases = j.get('releases', [])
-        for release in releases:
-            ver = parse(release)
-            if not ver.is_prerelease:
-                version = max(version, ver)
-    return "{}.{}.{}".format(version.release[0], version.release[1], version.release[2] + 1)
-
-
 setup(
     name="slickqa-snot",
     description="A plugin to nose to allow results from python tests to be put into slick.",
-    version=get_version_and_bump(package="slickqa-snot"),
+    version="1.0.2936",
     license="License :: OSI Approved :: Apache Software License",
     long_description=open('README.txt').read(),
     py_modules=['snot'],
