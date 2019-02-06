@@ -584,7 +584,10 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     resultstatus = ResultStatus.PASSED_ON_RETRY
                 result.status = resultstatus
                 result.finished = datetime.datetime.now()
-                result.runlength = int((result.finished - result.started).total_seconds() * 1000)
+                try:
+                    result.runlength = int((result.finished - result.started).total_seconds() * 1000)
+                except:
+                    log.error("Problem trying to calculate the runlength:", exc_info=sys.exc_info())
                 if on_file_result is not None:
                     try:
                         on_file_result(result)
