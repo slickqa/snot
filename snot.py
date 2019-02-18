@@ -45,7 +45,7 @@ REQUIRES_ATTRIBUTE = 'slick_requires'
 class PassedOnRetry(Exception):
     pass
 
-class NotTested(Exception):
+class NotTested(SkipTest):
     pass
 
 class Requirements(list):
