@@ -38,6 +38,7 @@ logs = []
 on_file_result = None
 snot_options = None
 test_failed = False
+test_not_tested = False
 
 REQUIRES_ATTRIBUTE = 'slick_requires'
 
@@ -46,6 +47,8 @@ class PassedOnRetry(Exception):
     pass
 
 class NotTested(SkipTest):
+    global test_not_tested
+    test_not_tested = True
     pass
 
 class Requirements(list):
@@ -632,15 +635,16 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
 
     def addError(self, test, err):
         global test_failed
+        global test_not_tested
         if not self.enabled:
             return
         if self.mode == 'schedule':
             sys.exit(0)
             return
         test_failed = True
-        if err[0] is SkipTest:
+        if err[0] is SkipTest and not test_not_tested:
             self.addSlickResult(test, ResultStatus.SKIPPED, err)
-        elif err[0] is NotTested:
+        elif err[0] is SkipTest and test_not_tested:
             self.addSlickResult(test, ResultStatus.NOT_TESTED, err)
         elif err[0] is PassedOnRetry:
             self.addSlickResult(test, ResultStatus.PASSED_ON_RETRY, err)
