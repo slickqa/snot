@@ -607,7 +607,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     if sys.version_info[0] == 2:
                         reason_lines = traceback.format_exception(*err)
                     else:
-                        reason_lines = traceback.format_exception(*err, chain=not isinstance(err[1], str))
+                        reason_lines = traceback.format_exception(*err)
                     message_parts = reason_lines[-1].split('\n')
                     reason_lines[-1] = message_parts[0]
                     capture = None
