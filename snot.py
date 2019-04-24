@@ -22,7 +22,7 @@ from slickqa import SlickQA, Testcase, ResultStatus, RunStatus, Step, Result, ma
 from slickqa.connection import SlickConnection
 
 try:
-    from ConfigParser import SafeConfigParser
+    from configparser import SafeConfigParser
 except:
     from configparser import SafeConfigParser
 
@@ -374,7 +374,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             assert isinstance(test, nose.case.Test)
             if self.options.slick_organize_by_tag:
                 if hasattr(test, 'tag'):
-                    self.addSlickTestrun(' - '.join(test.tag.values()))
+                    self.addSlickTestrun(' - '.join(list(test.tag.values())))
                 else:
                     continue
             else:
@@ -443,7 +443,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                             if requirements is None:
                                 requirements = []
                             for i in requires_value:
-                                if not isinstance(i, basestring):
+                                if not isinstance(i, str):
                                     requirements.extend(i)
                                 else:
                                     requirements.append(i)
@@ -460,12 +460,12 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     #        if '{' in data and '}' in data and test.test.arg is not None and len(test.test.arg) > 0:
                     #            data = data.format(*test.test.arg)
                     #        setattr(slicktest, attribute, data)
-                    for attribute_name, attribute_value in testdata.__dict__.items():
+                    for attribute_name, attribute_value in list(testdata.__dict__.items()):
                         if attribute_name == 'name':
                             pass
                         elif attribute_name == 'automationId' and attribute_value == 'nose.failure.Failure.runTest':
                             setattr(slicktest, 'name', "{}: {} ({})".format(type(test.test).__name__, type(test.test.exc_val).__name__, test.test.exc_val.message))
-                        elif attribute_name in slicktest._fields.keys():
+                        elif attribute_name in list(slicktest._fields.keys()):
                             setattr(slicktest, attribute_name, attribute_value)
                         elif attribute_name not in ('expectedResults', 'component', 'steps'):
                             result_attributes[attribute_name] = str(attribute_value)
