@@ -247,6 +247,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         parser.add_option("--slick-schedule-results", action="store_const", const="schedule", default=schedule_results_default,
                           metavar="SLICK_SCHEDULE_RESULTS", dest="slick_mode",
                           help="Schedule empty results in slick, but do not run the tests")
+        parser.add_option("--slick-sequential-testrun", action="store_const", const="sequential_testrun", default=False,
+                          metavar="SLICK_SEQUENTIAL_TESTRUN", dest="sequential_testrun",
+                          help="Schedule empty results in slick, but do not run the tests")
         parser.add_option("--slick-schedule-add-requirement", action="append", default=[],
                           metavar="SLICK_SCHEDULE_ADD_REQUIREMENT", dest="requirement_add",
                           help="Add a requirement to all results when scheduling.")
@@ -285,27 +288,20 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             return
         self.options = options
 
-        if not (hasattr(options, 'slick_testrun_id') and hasattr(options, 'slick_result_id') and
-                        options.slick_testrun_id is not None and options.slick_result_id is not None):
+        if not (hasattr(options, 'slick_testrun_id') and hasattr(options, 'slick_result_id') and options.slick_testrun_id is not None and options.slick_result_id is not None):
             for required in ['slick_url', 'slick_project_name']:
                 if (not hasattr(options, required)) or getattr(options, required) is None or getattr(options, required) == "":
                     log.error("You can't use snot without specifying at least the slick url and the project name.")
                     self.enabled = False
                     return
 
-    def addSlickTestrun(self, testplan_name=None):
+    def addSlickTestrun(self, testplan_name=None, requirements=None):
         global config, testrun
         options = self.options
         self.testplan = options.slick_testplan
         if testplan_name:
             self.testplan = testplan_name
-        self.use_existing_testrun = False
-        if hasattr(options, 'slick_testrun_id') and hasattr(options, 'slick_result_id') and \
-           options.slick_testrun_id is not None and options.slick_result_id is not None:
-            self.use_existing_testrun = True
-            self.testrun_id = options.slick_testrun_id
-            self.result_id = options.slick_result_id
-        elif self.testplan and self.testplan in self.testruns:
+        if self.testplan and self.testplan in self.testruns:
             self.testrun_id = self.testruns[self.testplan]
         self.url = options.slick_url
         self.project_name = options.slick_project_name
@@ -320,15 +316,19 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.testrun_name = options.slick_testrun_name
         self.environment_name = options.slick_environment_name
         self.testrun_group = options.slick_testrun_group
-        self.mode = options.slick_mode
-        self.requirement_add = options.requirement_add
-        self.attribute_add = options.attribute_add
+        self.sequential_testrun = options.sequential_testrun
         self.agent_name = options.slick_agent_name
         testrun = None
         if self.testplan and self.testplan in self.testruns:
             self.slick = self.testruns[self.testplan]
             testrun = self.slick.testrun
-            make_testrun_updatable(testrun, self.slick)
+            if self.mode == 'schedule':
+                if self.sequential_testrun and requirements:
+                    if not hasattr(testrun, 'requirements'):
+                        testrun.requirements = []
+                    testrun.requirements.extend(requirements)
+                    testrun.requirements = list(set(testrun.requirements))
+                    testrun.update()
         elif self.use_existing_testrun:
             self.slick = SlickConnection(self.url)
             testrun = self.slick.testruns(options.slick_testrun_id).get()
@@ -340,8 +340,15 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 self.testruns[self.testplan] = self.slick
             if self.mode == 'schedule':
                 testrun.attributes = {'scheduled': 'true'}
+                if self.sequential_testrun:
+                    testrun.attributes['type'] = 'SEQUENTIAL'
+                    testrun.state = "SCHEDULED"
+                    if requirements:
+                        if not hasattr(testrun, 'requirements'):
+                            testrun.requirements = []
+                        testrun.requirements.extend(requirements)
+                        testrun.requirements = list(set(testrun.requirements))
                 testrun.update()
-        self.new_requires = options.new_requires
 
     def get_tests(self, testsuite, data_driven=False):
         tests = []
@@ -370,15 +377,18 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         if not self.enabled:
             return
         self.results = dict()
+        options = self.options
+        self.mode = options.slick_mode
+        self.requirement_add = options.requirement_add
+        self.new_requires = options.new_requires
+        self.attribute_add = options.attribute_add
         for test in self.get_tests(testsuite):
             assert isinstance(test, nose.case.Test)
-            if self.options.slick_organize_by_tag:
-                if hasattr(test, 'tag'):
-                    self.addSlickTestrun(' - '.join(test.tag.values()))
-                else:
-                    continue
-            else:
-                self.addSlickTestrun()
+            self.use_existing_testrun = False
+            if hasattr(options, 'slick_testrun_id') and hasattr(options, 'slick_result_id') and options.slick_testrun_id is not None and options.slick_result_id is not None:
+                self.use_existing_testrun = True
+                self.testrun_id = options.slick_testrun_id
+                self.result_id = options.slick_result_id
             if self.use_existing_testrun:
                 result = self.slick.results(self.result_id).get()
                 make_result_updatable(result, self.slick)
@@ -451,6 +461,13 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                             result_attributes[requirement] = "required"
                 except:
                     log.error("Error occurred while trying to build attributes.", exc_info=sys.exc_info)
+                if self.options.slick_organize_by_tag:
+                    if hasattr(test, 'tag'):
+                        self.addSlickTestrun(' - '.join(test.tag.values()), requirements=requirements)
+                    else:
+                        continue
+                else:
+                    self.addSlickTestrun(requirements=requirements)
                 if self.mode == 'schedule':
                     result_attributes['scheduled'] = "true"
                 try:
@@ -515,7 +532,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 except:
                     log.error("Error occured when parsing for test {}:".format(test.id()), exc_info=sys.exc_info())
                 runstatus = RunStatus.TO_BE_RUN
-                if self.mode == 'schedule':
+                if self.mode == 'schedule' and not self.sequential_testrun:
                     runstatus = RunStatus.SCHEDULED
                 if requirements is not None:
                     requirements.sort()
