@@ -14,4 +14,4 @@ deploy:
     branches:
       only:
         - master
-        - stevejensen/add-sequential-testrun
+        - stevejensen22/add-sequential-testrun
