@@ -10,8 +10,3 @@ deploy:
   password:
     secure: vDTIpbtMUvKSSc58+/g0QEyYkLaw9/+ZD3qh8NgDIwtFrVAmqDeo6AI9uMSh3wvvyUfuLIe0T6rvrJEJ/G62QgM2Hy7CIncTCdef+BDdWO9+q7BHaPkZGjxAT+m5/a7zYU1azRYvlX1iOQCTwiSxFbmIZ/S1cBr01soUTY0RgxAJDRlEiEYrvcjaSxme5TDwmuYDgCrNZ33z7IwO31PMp/h/zLYmvPZtGXZdceKMJ6oxLiuYkUn/qjpOtm2mYXg8GNfzD2y2RVR5qqOP29mTSKrIYCtKj/TV3vOrcoP57c4PSVUFoIYiRYnIrgk71+hy4VE4zgUFefDHKn350yXJZpSsn5B7rIuIgvIZG4ec4jcI1pgbqy23+QdvshVqfaH2OQmeiyyElGnIWk3mPCId8O3vuIJ8b8Y4QNWMH9JYv3QckE7vX+3IDv/9Cpnn/y4PzqnNU81CJGKkyjZ3kz4QlsfWrQTVe+oAFDhAmDXNo3q/nAXYo7YL0FfoP3v+5kd6Y/W0mQZVBILVI/DKKmy0VKwEXWZhYr9hxP4YIkvm4dg+XiBCQaviM2Vb6LvwvS+Pawy8LSdcUrOyOEN7Jdz3u7z8ysoj5l3jHgj5tvYWcN3b4J351lSaIdiXz0eFyxZmkWIgloaRrxQa2sm27sQRL//Zp7BXlwKvr+uHpESsFO0=
   skip_existing: false
-  on:
-    branches:
-      only:
-        - master
-        - stevejensen22/add-sequential-testrun
