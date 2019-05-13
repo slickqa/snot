@@ -298,26 +298,15 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
     def addSlickTestrun(self, testplan_name=None, requirements=None):
         global config, testrun
         options = self.options
-        self.testplan = options.slick_testplan
         if testplan_name:
             self.testplan = testplan_name
         if self.testplan and self.testplan in self.testruns:
             self.testrun_id = self.testruns[self.testplan]
-        self.url = options.slick_url
-        self.project_name = options.slick_project_name
-        self.release = options.slick_release
-        self.build = options.slick_build
-        self.build_function = options.slick_build_from_function
         if self.build_function:
             try:
                 self.build = call_function(self.build_function)
             except:
                 log.warn("Problem occured calling build information from '%s': ", self.build_function, exc_info=sys.exc_info())
-        self.testrun_name = options.slick_testrun_name
-        self.environment_name = options.slick_environment_name
-        self.testrun_group = options.slick_testrun_group
-        self.sequential_testrun = options.sequential_testrun
-        self.agent_name = options.slick_agent_name
         testrun = None
         if self.testplan and self.testplan in self.testruns:
             self.slick = self.testruns[self.testplan]
@@ -329,11 +318,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     testrun.requirements.extend(requirements)
                     testrun.requirements = list(set(testrun.requirements))
                     testrun.update()
-        elif self.use_existing_testrun:
-            self.slick = SlickConnection(self.url)
-            testrun = self.slick.testruns(options.slick_testrun_id).get()
-            make_testrun_updatable(testrun, self.slick)
-        else:
+        elif not self.use_existing_testrun:
             self.slick = SlickQA(self.url, self.project_name, self.release, self.build, self.testplan, self.testrun_name, self.environment_name, self.testrun_group)
             testrun = self.slick.testrun
             if hasattr(testrun, 'id') and self.slick.testrun.name not in self.testruns:
@@ -378,10 +363,21 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
             return
         self.results = dict()
         options = self.options
+        self.testplan = options.slick_testplan
         self.mode = options.slick_mode
         self.requirement_add = options.requirement_add
         self.new_requires = options.new_requires
         self.attribute_add = options.attribute_add
+        self.url = options.slick_url
+        self.project_name = options.slick_project_name
+        self.release = options.slick_release
+        self.build = options.slick_build
+        self.build_function = options.slick_build_from_function
+        self.testrun_name = options.slick_testrun_name
+        self.environment_name = options.slick_environment_name
+        self.testrun_group = options.slick_testrun_group
+        self.sequential_testrun = options.sequential_testrun
+        self.agent_name = options.slick_agent_name
         for test in self.get_tests(testsuite):
             assert isinstance(test, nose.case.Test)
             self.use_existing_testrun = False
@@ -390,6 +386,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 self.testrun_id = options.slick_testrun_id
                 self.result_id = options.slick_result_id
             if self.use_existing_testrun:
+                self.slick = SlickConnection(self.url)
+                testrun = self.slick.testruns(options.slick_testrun_id).get()
+                make_testrun_updatable(testrun, self.slick)
                 result = self.slick.results(self.result_id).get()
                 make_result_updatable(result, self.slick)
                 self.results[test.id()] = result
