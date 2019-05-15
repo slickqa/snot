@@ -19,7 +19,7 @@ setup(
     description="A plugin to nose to allow results from python tests to be put into slick.",
     version="1.0.2947",
     license="License :: OSI Approved :: Apache Software License",
-    long_description=open('README.txt').read(),
+    long_description=open('README.md').read(),
     py_modules=['snot'],
     # packages=find_packages(exclude=['distribute_setup']),
     # package_data={'': ['*.txt', '*.rst', '*.html']},
