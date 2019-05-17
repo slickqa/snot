@@ -269,6 +269,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                           help="Don't capture the logs from the logging framework")
         parser.add_option("--slick-organize-by-tag", action="append", default=None,
                           help='A space delimited list of tag keys to base test run names after. Will be " - " delimited.')
+        parser.add_option("--slick-duplicate", action="store", default=None, dest="slick_duplicate",
+                          help='Duplicate each test x number of times.')
 
         # Make sure the log capture doesn't show slick related logging statements
         if 'NOSE_LOGFILTER' in env:
@@ -378,164 +380,171 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.testrun_group = options.slick_testrun_group
         self.sequential_testrun = options.sequential_testrun
         self.agent_name = options.slick_agent_name
+        self.slick_duplicate = 1
+        if options.slick_duplicate:
+            try:
+                self.slick_duplicate = int(options.slick_duplicate)
+            except:
+                pass
         for test in self.get_tests(testsuite):
-            assert isinstance(test, nose.case.Test)
-            self.use_existing_testrun = False
-            if hasattr(options, 'slick_testrun_id') and hasattr(options, 'slick_result_id') and options.slick_testrun_id is not None and options.slick_result_id is not None:
-                self.use_existing_testrun = True
-                self.testrun_id = options.slick_testrun_id
-                self.result_id = options.slick_result_id
-            if self.use_existing_testrun:
-                self.slick = SlickConnection(self.url)
-                testrun = self.slick.testruns(options.slick_testrun_id).get()
-                make_testrun_updatable(testrun, self.slick)
-                result = self.slick.results(self.result_id).get()
-                make_result_updatable(result, self.slick)
-                self.results[test.id()] = result
-            else:
-                testmethod = test.test._testMethodName
-                if testmethod == 'runTest' and hasattr(test.test, "test"):
-                    testmethod = 'test'
-
-                testdata = DocStringMetaData(getattr(test.test, testmethod))
-                if not hasattr(testdata, 'automationId'):
-                    testdata.automationId = test.id()
-                if not hasattr(testdata, 'automationTool'):
-                    testdata.automationTool = 'python-nose'
-                if not hasattr(testdata, 'automationKey'):
-                    # build key
-                    address = list(test.address())
-                    try:
-                        if not address[0].startswith("/"):
-                            testfile = os.path.relpath(address[0])
-                        else:
-                            testfile = address[0]
-                        module_name = os.path.basename(address[0])[:-3]
-                        if module_name == address[1]:
-                            address.pop(1)
-                        testdata.automationKey = "{0}:{1}".format(testfile, address[1])
-                        if len(address) > 2:
-                            try:
-                                testdata.automationKey = ".".join([testdata.automationKey, ] + address[2:])
-                            except:
-                                pass
-                    except:
-                        pass
-                slicktest = Testcase()
-                slicktest.name = testdata.name
-                if '{' in testdata.name and '}' in testdata.name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
-                    slicktest.name = testdata.name.format(*test.test.arg)
-                slicktest.automationId = testdata.automationId
-                slicktest.automationTool = testdata.automationTool
-                result_attributes = {}
-                requirements = None
-                if self.mode == "schedule" and self.requirement_add is not None and len(self.requirement_add) > 0:
-                    for requirement_add in self.requirement_add:
-                        result_attributes[requirement_add] = "required"
-                        if self.new_requires:
-                            if requirements is None:
-                                requirements = [requirement_add]
-                            else:
-                                requirements.append(requirement_add)
-                if self.mode == "schedule" and self.attribute_add is not None and len(self.attribute_add) > 0:
-                    for attribute_add in self.attribute_add:
-                        key_and_value = attribute_add.split(',')
-                        if len(key_and_value) == 2:
-                            result_attributes[key_and_value[0]] = key_and_value[1]
-                        else:
-                            result_attributes[attribute_add] = 'true'
-                try:
-                    actual_test_method = getattr(test.test, testmethod)
-                    if hasattr(actual_test_method, REQUIRES_ATTRIBUTE):
-                        requires_value = getattr(actual_test_method, REQUIRES_ATTRIBUTE)
-                        if self.new_requires:
-                            if requirements is None:
-                                requirements = []
-                            for i in requires_value:
-                                if not isinstance(i, basestring):
-                                    requirements.extend(i)
-                                else:
-                                    requirements.append(i)
-                        for requirement in set(requirements):
-                            result_attributes[requirement] = "required"
-                except:
-                    log.error("Error occurred while trying to build attributes.", exc_info=sys.exc_info)
-                if self.options.slick_organize_by_tag:
-                    if hasattr(test, 'tag'):
-                        self.addSlickTestrun(' - '.join(test.tag.values()), requirements=requirements)
-                    else:
-                        continue
+            for i in range(self.slick_duplicate):
+                assert isinstance(test, nose.case.Test)
+                self.use_existing_testrun = False
+                if hasattr(options, 'slick_testrun_id') and hasattr(options, 'slick_result_id') and options.slick_testrun_id is not None and options.slick_result_id is not None:
+                    self.use_existing_testrun = True
+                    self.testrun_id = options.slick_testrun_id
+                    self.result_id = options.slick_result_id
+                if self.use_existing_testrun:
+                    self.slick = SlickConnection(self.url)
+                    testrun = self.slick.testruns(options.slick_testrun_id).get()
+                    make_testrun_updatable(testrun, self.slick)
+                    result = self.slick.results(self.result_id).get()
+                    make_result_updatable(result, self.slick)
+                    self.results[test.id()] = result
                 else:
-                    self.addSlickTestrun(requirements=requirements)
-                if self.mode == 'schedule':
-                    result_attributes['scheduled'] = "true"
-                try:
-                    #for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
-                    #    if attribute is not None and hasattr(testdata, attribute) and getattr(testdata, attribute) is not None:
-                    #        data = getattr(testdata, attribute)
-                    #        if '{' in data and '}' in data and test.test.arg is not None and len(test.test.arg) > 0:
-                    #            data = data.format(*test.test.arg)
-                    #        setattr(slicktest, attribute, data)
-                    for attribute_name, attribute_value in testdata.__dict__.items():
-                        if attribute_name == 'name':
+                    testmethod = test.test._testMethodName
+                    if testmethod == 'runTest' and hasattr(test.test, "test"):
+                        testmethod = 'test'
+
+                    testdata = DocStringMetaData(getattr(test.test, testmethod))
+                    if not hasattr(testdata, 'automationId'):
+                        testdata.automationId = test.id()
+                    if not hasattr(testdata, 'automationTool'):
+                        testdata.automationTool = 'python-nose'
+                    if not hasattr(testdata, 'automationKey'):
+                        # build key
+                        address = list(test.address())
+                        try:
+                            if not address[0].startswith("/"):
+                                testfile = os.path.relpath(address[0])
+                            else:
+                                testfile = address[0]
+                            module_name = os.path.basename(address[0])[:-3]
+                            if module_name == address[1]:
+                                address.pop(1)
+                            testdata.automationKey = "{0}:{1}".format(testfile, address[1])
+                            if len(address) > 2:
+                                try:
+                                    testdata.automationKey = ".".join([testdata.automationKey, ] + address[2:])
+                                except:
+                                    pass
+                        except:
                             pass
-                        elif attribute_name == 'automationId' and attribute_value == 'nose.failure.Failure.runTest':
-                            setattr(slicktest, 'name', "{}: {} ({})".format(type(test.test).__name__, type(test.test.exc_val).__name__, test.test.exc_val.message))
-                        elif attribute_name in slicktest._fields.keys():
-                            setattr(slicktest, attribute_name, attribute_value)
-                        elif attribute_name not in ('expectedResults', 'component', 'steps'):
-                            result_attributes[attribute_name] = str(attribute_value)
-                    if hasattr(test, 'data_driven') and test.data_driven:
-                        method_file = sys.modules[getattr(test.test, testmethod).__module__].__file__
-                        # Don't remove cwd because we need that
-                        # if method_file.startswith(os.getcwd()):
-                        #     method_file = method_file[len(os.getcwd()) + 1:]
-                        if method_file.endswith('pyc'):
-                            method_file = method_file[:-1]
-                        if self.mode == "schedule":
-                            result_attributes['snotDataDrivenModuleName'] = getattr(test.test, testmethod).__module__
-                            result_attributes['snotDataDrivenFile'] = method_file
-                            result_attributes['snotDataDrivenFunctionName'] = getattr(test.test, testmethod).__name__
-                            result_attributes['snotDataDrivenArguments'] = pickle.dumps(test.test.arg)
-                        if hasattr(test.test, 'arg') and len(test.test.arg) > 0 and isinstance(test.test.arg[-1], Requirements):
-                            if requirements is None:
-                                requirements = []
-                            requirements.extend(test.test.arg[-1])
-                        if hasattr(getattr(test.test, testmethod), 'im_self'):
-                            result_attributes['snotDataDrivenInstance'] = pickle.dumps(getattr(getattr(test.test, testmethod), 'im_self'))
-                        slicktest.automationKey = "snot:data_driven_proxy"
-                    slicktest.project = self.slick.project.create_reference()
-                    if hasattr(testdata, 'component'):
-                        comp_name = testdata.component
-                        if comp_name is not None and '{' in comp_name and '}' in comp_name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
-                            comp_name = comp_name.format(*test.test.arg)
-                        component = self.slick.get_component(comp_name)
-                        if component is None:
-                            component = self.slick.create_component(comp_name)
-                        slicktest.component = component.create_reference()
-                    if hasattr(testdata, 'steps'):
-                        slicktest.steps = []
-                        for step in testdata.steps:
-                            slickstep = Step()
-                            slickstep.name = step
-                            if step is not None and '{' in step and '}' in step and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
-                                slickstep.name = step.format(*test.test.arg)
-                            if hasattr(testdata, 'expectedResults') and len(testdata.expectedResults) > len(slicktest.steps):
-                                expectedResult = testdata.expectedResults[len(slicktest.steps)]
-                                slickstep.expectedResult = expectedResult
-                                if expectedResult is not None and '{' in expectedResult and '}' in expectedResult and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
-                                    slickstep.expectedResult = expectedResult.format(*test.test.arg)
-                            slicktest.steps.append(slickstep)
-                    if not hasattr(testdata, 'tags') and requirements:
-                        slicktest.tags = list(set(requirements))
-                except:
-                    log.error("Error occured when parsing for test {}:".format(test.id()), exc_info=sys.exc_info())
-                runstatus = RunStatus.TO_BE_RUN
-                if self.mode == 'schedule' and not self.sequential_testrun:
-                    runstatus = RunStatus.SCHEDULED
-                if requirements is not None:
-                    requirements.sort()
-                self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes, requires=requirements)
+                    slicktest = Testcase()
+                    slicktest.name = testdata.name
+                    if '{' in testdata.name and '}' in testdata.name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
+                        slicktest.name = testdata.name.format(*test.test.arg)
+                    slicktest.automationId = testdata.automationId
+                    slicktest.automationTool = testdata.automationTool
+                    result_attributes = {}
+                    requirements = None
+                    if self.mode == "schedule" and self.requirement_add is not None and len(self.requirement_add) > 0:
+                        for requirement_add in self.requirement_add:
+                            result_attributes[requirement_add] = "required"
+                            if self.new_requires:
+                                if requirements is None:
+                                    requirements = [requirement_add]
+                                else:
+                                    requirements.append(requirement_add)
+                    if self.mode == "schedule" and self.attribute_add is not None and len(self.attribute_add) > 0:
+                        for attribute_add in self.attribute_add:
+                            key_and_value = attribute_add.split(',')
+                            if len(key_and_value) == 2:
+                                result_attributes[key_and_value[0]] = key_and_value[1]
+                            else:
+                                result_attributes[attribute_add] = 'true'
+                    try:
+                        actual_test_method = getattr(test.test, testmethod)
+                        if hasattr(actual_test_method, REQUIRES_ATTRIBUTE):
+                            requires_value = getattr(actual_test_method, REQUIRES_ATTRIBUTE)
+                            if self.new_requires:
+                                if requirements is None:
+                                    requirements = []
+                                for i in requires_value:
+                                    if not isinstance(i, basestring):
+                                        requirements.extend(i)
+                                    else:
+                                        requirements.append(i)
+                            for requirement in set(requirements):
+                                result_attributes[requirement] = "required"
+                    except:
+                        log.error("Error occurred while trying to build attributes.", exc_info=sys.exc_info)
+                    if self.options.slick_organize_by_tag:
+                        if hasattr(test, 'tag'):
+                            self.addSlickTestrun(' - '.join(test.tag.values()), requirements=requirements)
+                        else:
+                            continue
+                    else:
+                        self.addSlickTestrun(requirements=requirements)
+                    if self.mode == 'schedule':
+                        result_attributes['scheduled'] = "true"
+                    try:
+                        #for attribute in ['automationConfiguration', 'automationKey', 'author', 'purpose', 'requirements', 'tags']:
+                        #    if attribute is not None and hasattr(testdata, attribute) and getattr(testdata, attribute) is not None:
+                        #        data = getattr(testdata, attribute)
+                        #        if '{' in data and '}' in data and test.test.arg is not None and len(test.test.arg) > 0:
+                        #            data = data.format(*test.test.arg)
+                        #        setattr(slicktest, attribute, data)
+                        for attribute_name, attribute_value in testdata.__dict__.items():
+                            if attribute_name == 'name':
+                                pass
+                            elif attribute_name == 'automationId' and attribute_value == 'nose.failure.Failure.runTest':
+                                setattr(slicktest, 'name', "{}: {} ({})".format(type(test.test).__name__, type(test.test.exc_val).__name__, test.test.exc_val.message))
+                            elif attribute_name in slicktest._fields.keys():
+                                setattr(slicktest, attribute_name, attribute_value)
+                            elif attribute_name not in ('expectedResults', 'component', 'steps'):
+                                result_attributes[attribute_name] = str(attribute_value)
+                        if hasattr(test, 'data_driven') and test.data_driven:
+                            method_file = sys.modules[getattr(test.test, testmethod).__module__].__file__
+                            # Don't remove cwd because we need that
+                            # if method_file.startswith(os.getcwd()):
+                            #     method_file = method_file[len(os.getcwd()) + 1:]
+                            if method_file.endswith('pyc'):
+                                method_file = method_file[:-1]
+                            if self.mode == "schedule":
+                                result_attributes['snotDataDrivenModuleName'] = getattr(test.test, testmethod).__module__
+                                result_attributes['snotDataDrivenFile'] = method_file
+                                result_attributes['snotDataDrivenFunctionName'] = getattr(test.test, testmethod).__name__
+                                result_attributes['snotDataDrivenArguments'] = pickle.dumps(test.test.arg)
+                            if hasattr(test.test, 'arg') and len(test.test.arg) > 0 and isinstance(test.test.arg[-1], Requirements):
+                                if requirements is None:
+                                    requirements = []
+                                requirements.extend(test.test.arg[-1])
+                            if hasattr(getattr(test.test, testmethod), 'im_self'):
+                                result_attributes['snotDataDrivenInstance'] = pickle.dumps(getattr(getattr(test.test, testmethod), 'im_self'))
+                            slicktest.automationKey = "snot:data_driven_proxy"
+                        slicktest.project = self.slick.project.create_reference()
+                        if hasattr(testdata, 'component'):
+                            comp_name = testdata.component
+                            if comp_name is not None and '{' in comp_name and '}' in comp_name and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
+                                comp_name = comp_name.format(*test.test.arg)
+                            component = self.slick.get_component(comp_name)
+                            if component is None:
+                                component = self.slick.create_component(comp_name)
+                            slicktest.component = component.create_reference()
+                        if hasattr(testdata, 'steps'):
+                            slicktest.steps = []
+                            for step in testdata.steps:
+                                slickstep = Step()
+                                slickstep.name = step
+                                if step is not None and '{' in step and '}' in step and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
+                                    slickstep.name = step.format(*test.test.arg)
+                                if hasattr(testdata, 'expectedResults') and len(testdata.expectedResults) > len(slicktest.steps):
+                                    expectedResult = testdata.expectedResults[len(slicktest.steps)]
+                                    slickstep.expectedResult = expectedResult
+                                    if expectedResult is not None and '{' in expectedResult and '}' in expectedResult and hasattr(test.test, 'arg') and test.test.arg is not None and len(test.test.arg) > 0:
+                                        slickstep.expectedResult = expectedResult.format(*test.test.arg)
+                                slicktest.steps.append(slickstep)
+                        if not hasattr(testdata, 'tags') and requirements:
+                            slicktest.tags = list(set(requirements))
+                    except:
+                        log.error("Error occured when parsing for test {}:".format(test.id()), exc_info=sys.exc_info())
+                    runstatus = RunStatus.TO_BE_RUN
+                    if self.mode == 'schedule' and not self.sequential_testrun:
+                        runstatus = RunStatus.SCHEDULED
+                    if requirements is not None:
+                        requirements.sort()
+                    self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes, requires=requirements)
         if self.enabled and self.mode == 'schedule':
             sys.exit(0)
 

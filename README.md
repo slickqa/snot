@@ -80,3 +80,7 @@ Snot is a nose plugin that will allow results from python unit tests to report t
 **--slick-sequential-testrun**
 
 	Use with slick-schedule-results; schedules an entire testrun to be ran in sequence rather than distributed.
+	
+**--slick-duplicate**
+
+    Duplicate each test x number of times.
