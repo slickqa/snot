@@ -351,7 +351,13 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                 if data_driven:
                     test.data_driven = True
                 if self.options.slick_organize_by_tag:
-                    method = getattr(testsuite.context, test.test._testMethodName)
+                    if hasattr(testsuite.context, test.test._testMethodName):
+                        method = getattr(testsuite.context, test.test._testMethodName)
+                    elif test.data_driven:
+                        method = testsuite.context
+                    else:
+                        log.error("Couldn't get tags from function.")
+                        continue
                     if isinstance(self.options.slick_organize_by_tag, list):
                         test.tag = {}
                         for tag in self.options.slick_organize_by_tag:
