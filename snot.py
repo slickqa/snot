@@ -41,6 +41,7 @@ test_failed = False
 test_not_tested = False
 
 REQUIRES_ATTRIBUTE = 'slick_requires'
+TEST_ATTRIBUTES = 'slick_test_attributes'
 
 
 class PassedOnRetry(Exception):
@@ -63,6 +64,16 @@ def requires(*args):
             setattr(f, REQUIRES_ATTRIBUTE, args)
         return f
     return _wrap_with_requires
+
+
+def test_attributes(**kwargs):
+    def _wrap_with_test_attributes(f):
+        if hasattr(f, TEST_ATTRIBUTES):
+            (getattr(f, TEST_ATTRIBUTES)).update(kwargs)
+        else:
+            setattr(f, TEST_ATTRIBUTES, kwargs)
+        return f
+    return _wrap_with_test_attributes
 
 
 def add_file(path, fileobj=None):
@@ -461,6 +472,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                                 result_attributes[attribute_add] = 'true'
                     try:
                         actual_test_method = getattr(test.test, testmethod)
+                        if hasattr(actual_test_method, TEST_ATTRIBUTES):
+                            temp_attributes = getattr(actual_test_method, TEST_ATTRIBUTES)
+                            result_attributes.update(temp_attributes)
                         if hasattr(actual_test_method, REQUIRES_ATTRIBUTE):
                             requires_value = getattr(actual_test_method, REQUIRES_ATTRIBUTE)
                             if self.new_requires:
