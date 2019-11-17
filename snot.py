@@ -10,6 +10,7 @@ import sys
 import time
 import traceback
 import types
+from functools import partial
 from unittest import SkipTest
 
 import nose
@@ -31,6 +32,7 @@ __author__ = 'jcorbett'
 log = logging.getLogger('nose.plugins.snot')
 
 current_result = None
+slick_test = None
 """:type: Result"""
 testrun = None
 config = None
@@ -42,6 +44,7 @@ test_not_tested = False
 
 REQUIRES_ATTRIBUTE = 'slick_requires'
 SLICK_ATTRIBUTES = 'slick_test_attributes'
+SKIP_CALLBACK = 'skip_callback'
 
 
 class PassedOnRetry(Exception):
@@ -54,6 +57,13 @@ class NotTested(SkipTest):
 
 class Requirements(list):
     pass
+
+
+def skip_if(func):
+    def _wrap_with_skip_if(f):
+        setattr(f, SKIP_CALLBACK, func)
+        return f
+    return _wrap_with_skip_if
 
 
 def requires(*args):
@@ -378,6 +388,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         return tests
 
     def prepareTest(self, testsuite):
+        global slick_test
+        slick_test = None
         if not self.enabled:
             return
         self.results = dict()
@@ -398,6 +410,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.sequential_testrun = options.sequential_testrun
         self.agent_name = options.slick_agent_name
         self.slick_duplicate = 1
+        self.skip_callback = None
         if options.slick_duplicate:
             try:
                 self.slick_duplicate = int(options.slick_duplicate)
@@ -487,6 +500,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                                         requirements.append(i)
                             for requirement in set(requirements):
                                 result_attributes[requirement] = "required"
+                        if hasattr(actual_test_method, SKIP_CALLBACK):
+                            self.skip_callback = getattr(actual_test_method, SKIP_CALLBACK)
                     except:
                         log.error("Error occurred while trying to build attributes.", exc_info=sys.exc_info)
                     if self.options.slick_organize_by_tag:
@@ -560,11 +575,29 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     except:
                         log.error("Error occured when parsing for test {}:".format(test.id()), exc_info=sys.exc_info())
                     runstatus = RunStatus.TO_BE_RUN
-                    if self.mode == 'schedule' and not self.sequential_testrun:
+                    if self.mode == 'schedule' and not self.sequential_testrun and not self.skip_callback:
                         runstatus = RunStatus.SCHEDULED
                     if requirements is not None:
                         requirements.sort()
-                    self.results[test.id()] = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes, requires=requirements)
+                    slick_result = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes, requires=requirements)
+
+                    if self.mode == 'schedule' and self.skip_callback:
+                        response = partial(self.skip_callback, slick_result=slick_result)()
+                        if response:
+                            try:
+                                raise NotTested(response)
+                            except BaseException as e:
+                                slick_result.status = ResultStatus.NOT_TESTED
+                                slick_result.runstatus = RunStatus.FINISHED
+                                slick_result.duration = 0
+                                slick_result.reason = str(e)
+                                slick_result.update()
+                        else:
+                            slick_result.runstatus = RunStatus.SCHEDULED
+                            slick_result.update()
+
+                    self.results[test.id()] = slick_result
+
         if self.enabled and self.mode == 'schedule':
             sys.exit(0)
 
