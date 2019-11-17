@@ -502,6 +502,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                                 result_attributes[requirement] = "required"
                         if hasattr(actual_test_method, SKIP_CALLBACK):
                             self.skip_callback = getattr(actual_test_method, SKIP_CALLBACK)
+                        else:
+                            self.skip_callback = None
                     except:
                         log.error("Error occurred while trying to build attributes.", exc_info=sys.exc_info)
                     if self.options.slick_organize_by_tag:
