@@ -591,7 +591,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                             except BaseException as e:
                                 slick_result.status = ResultStatus.NOT_TESTED
                                 slick_result.runstatus = RunStatus.FINISHED
-                                slick_result.duration = 0
+                                slick_result.started = slick_result.recorded
+                                slick_result.finished = slick_result.recorded
                                 slick_result.reason = str(e)
                                 slick_result.update()
                         else:
