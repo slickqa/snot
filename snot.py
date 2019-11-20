@@ -61,7 +61,10 @@ class Requirements(list):
 
 def skip_if(func):
     def _wrap_with_skip_if(f):
-        setattr(f, SKIP_CALLBACK, func)
+        if hasattr(f, SKIP_CALLBACK):
+            (getattr(f, SKIP_CALLBACK)).append(func)
+        else:
+            setattr(f, SKIP_CALLBACK, [func])
         return f
     return _wrap_with_skip_if
 
@@ -410,7 +413,7 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
         self.sequential_testrun = options.sequential_testrun
         self.agent_name = options.slick_agent_name
         self.slick_duplicate = 1
-        self.skip_callback = None
+        self.skip_callbacks = None
         if options.slick_duplicate:
             try:
                 self.slick_duplicate = int(options.slick_duplicate)
@@ -501,9 +504,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                             for requirement in set(requirements):
                                 result_attributes[requirement] = "required"
                         if hasattr(actual_test_method, SKIP_CALLBACK):
-                            self.skip_callback = getattr(actual_test_method, SKIP_CALLBACK)
+                            self.skip_callbacks = getattr(actual_test_method, SKIP_CALLBACK)
                         else:
-                            self.skip_callback = None
+                            self.skip_callbacks = None
                     except:
                         log.error("Error occurred while trying to build attributes.", exc_info=sys.exc_info)
                     if self.options.slick_organize_by_tag:
@@ -577,24 +580,25 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     except:
                         log.error("Error occured when parsing for test {}:".format(test.id()), exc_info=sys.exc_info())
                     runstatus = RunStatus.TO_BE_RUN
-                    if self.mode == 'schedule' and not self.sequential_testrun and not self.skip_callback:
+                    if self.mode == 'schedule' and not self.sequential_testrun and not self.skip_callbacks:
                         runstatus = RunStatus.SCHEDULED
                     if requirements is not None:
                         requirements.sort()
                     slick_result = self.slick.file_result(slicktest.name, ResultStatus.NO_RESULT, reason="not yet run", runlength=0, testdata=slicktest, runstatus=runstatus, attributes=result_attributes, requires=requirements)
 
-                    if self.mode == 'schedule' and self.skip_callback:
-                        response = partial(self.skip_callback, slick_result=slick_result)()
-                        if response:
-                            try:
-                                raise NotTested(response)
-                            except BaseException as e:
-                                slick_result.status = ResultStatus.NOT_TESTED
-                                slick_result.runstatus = RunStatus.FINISHED
-                                slick_result.started = slick_result.recorded
-                                slick_result.finished = slick_result.recorded
-                                slick_result.reason = str(e)
-                                slick_result.update()
+                    if self.mode == 'schedule' and self.skip_callbacks:
+                        for callback in self.skip_callbacks:
+                            response = partial(callback, slick_result=slick_result)()
+                            if response:
+                                try:
+                                    raise NotTested(response)
+                                except BaseException as e:
+                                    slick_result.status = ResultStatus.NOT_TESTED
+                                    slick_result.runstatus = RunStatus.FINISHED
+                                    slick_result.started = slick_result.recorded
+                                    slick_result.finished = slick_result.recorded
+                                    slick_result.reason = str(e)
+                                    slick_result.update()
                         else:
                             slick_result.runstatus = RunStatus.SCHEDULED
                             slick_result.update()
