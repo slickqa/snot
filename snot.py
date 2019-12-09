@@ -295,6 +295,9 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                           help='A space delimited list of tag keys to base test run names after. Will be " - " delimited.')
         parser.add_option("--slick-duplicate", action="store", default=None, dest="slick_duplicate",
                           help='Duplicate each test x number of times.')
+        parser.add_option("--slick-schedule-path-prepend", action="store", default=env.get('SLICK_SCHEDULE_PATH_PREPEND'),
+                          metavar="SLICK_SCHEDULE_PATH_PREPEND", dest="slick_schedule_path_prepend",
+                          help="If a test is scheduled with relative path and this is specified, prepend it to the test path.")
 
         # Make sure the log capture doesn't show slick related logging statements
         if 'NOSE_LOGFILTER' in env:
@@ -449,7 +452,10 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                         address = list(test.address())
                         try:
                             if not address[0].startswith("/"):
-                                testfile = os.path.relpath(address[0])
+                                if hasattr(options, 'slick_schedule_path_prepend') and options.slick_schedule_path_prepend:
+                                    testfile = '/'.join([options.slick_schedule_path_prepend, os.path.relpath(address[0])])
+                                else:
+                                    testfile = os.path.relpath(address[0])
                             else:
                                 testfile = address[0]
                             module_name = os.path.basename(address[0])[:-3]
