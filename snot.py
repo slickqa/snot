@@ -451,11 +451,10 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                         # build key
                         address = list(test.address())
                         try:
-                            if not address[0].startswith("/"):
-                                if hasattr(options, 'slick_schedule_path_prepend') and options.slick_schedule_path_prepend:
-                                    testfile = '/'.join([options.slick_schedule_path_prepend, os.path.relpath(address[0])])
-                                else:
-                                    testfile = os.path.relpath(address[0])
+                            if hasattr(options, 'slick_schedule_path_prepend') and options.slick_schedule_path_prepend:
+                                testfile = '/'.join([options.slick_schedule_path_prepend, os.path.relpath(address[0])])
+                            elif not address[0].startswith("/"):
+                                testfile = os.path.relpath(address[0])
                             else:
                                 testfile = address[0]
                             module_name = os.path.basename(address[0])[:-3]
