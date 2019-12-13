@@ -548,7 +548,10 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                                 method_file = method_file[:-1]
                             if self.mode == "schedule":
                                 result_attributes['snotDataDrivenModuleName'] = getattr(test.test, testmethod).__module__
-                                result_attributes['snotDataDrivenFile'] = method_file
+                                if hasattr(options, 'slick_schedule_path_prepend') and options.slick_schedule_path_prepend:
+                                    result_attributes['snotDataDrivenFile'] = '/'.join([options.slick_schedule_path_prepend, os.path.relpath(method_file)])
+                                else:
+                                    result_attributes['snotDataDrivenFile'] = method_file
                                 result_attributes['snotDataDrivenFunctionName'] = getattr(test.test, testmethod).__name__
                                 result_attributes['snotDataDrivenArguments'] = pickle.dumps(test.test.arg)
                             if hasattr(test.test, 'arg') and len(test.test.arg) > 0 and isinstance(test.test.arg[-1], Requirements):
