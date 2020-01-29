@@ -63,6 +63,11 @@ class NotTested(SkipTest):
 class Requirements(list):
     pass
 
+class ErrorValue(str):
+    __cause__ = None
+    __context__ = None
+    __suppress_context__ = None
+
 
 def skip_if(func):
     def _wrap_with_skip_if(f):
@@ -705,6 +710,8 @@ class SlickAsSnotPlugin(nose.plugins.Plugin):
                     if sys.version_info[0] == 2:
                         reason_lines = traceback.format_exception(*err)
                     else:
+                        if isinstance(err[1], str):
+                            err = (err[0], ErrorValue(err[1]), err[2])
                         reason_lines = traceback.format_exception(*err, chain=not isinstance(err[1], str))
                     message_parts = reason_lines[-1].split('\n')
                     reason_lines[-1] = message_parts[0]
