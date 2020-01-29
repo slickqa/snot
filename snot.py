@@ -30,7 +30,7 @@ from slickqa.connection import SlickConnection
 try:
     from configparser import SafeConfigParser
 except:
-    from configparser import SafeConfigParser
+    from ConfigParser import SafeConfigParser
 
 __author__ = 'jcorbett'
 
