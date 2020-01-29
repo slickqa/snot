@@ -5,3 +5,4 @@ docutils
 decorator
 requests
 packaging
+future
