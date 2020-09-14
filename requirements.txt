@@ -6,3 +6,4 @@ decorator
 requests
 packaging
 future
+twine==3.1.1
